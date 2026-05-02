@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/bpmndi-complete.schema.json",
+  "title": "BPMNDI Complete v30",
+  "type": "object",
+  "required": [
+    "diagrams"
+  ],
+  "properties": {
+    "diagrams": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "shapes": {
+      "type": "object"
+    },
+    "edges": {
+      "type": "object"
+    },
+    "labels": {
+      "type": "object"
+    }
+  }
+}

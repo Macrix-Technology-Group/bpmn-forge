@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+  id="Definitions_we_di">
+  <bpmn:process id="inbound_we_di" name="Inbound WE with DI" isExecutable="true">
+    <bpmn:laneSet id="laneSet_1">
+      <bpmn:lane id="lane_system" name="System"><bpmn:flowNodeRef>start</bpmn:flowNodeRef><bpmn:flowNodeRef>scan</bpmn:flowNodeRef><bpmn:flowNodeRef>gw</bpmn:flowNodeRef><bpmn:flowNodeRef>measure</bpmn:flowNodeRef><bpmn:flowNodeRef>end</bpmn:flowNodeRef></bpmn:lane>
+      <bpmn:lane id="lane_operator" name="Operator"><bpmn:flowNodeRef>manual</bpmn:flowNodeRef></bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="start" name="Palette on WE01"><bpmn:outgoing>e1</bpmn:outgoing><bpmn:messageEventDefinition /></bpmn:startEvent>
+    <bpmn:serviceTask id="scan" name="Scan HU"><bpmn:incoming>e1</bpmn:incoming><bpmn:outgoing>e2</bpmn:outgoing></bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="gw" name="Announced?" default="e_no"><bpmn:incoming>e2</bpmn:incoming><bpmn:outgoing>e_yes</bpmn:outgoing><bpmn:outgoing>e_no</bpmn:outgoing></bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="measure" name="Measure"><bpmn:incoming>e_yes</bpmn:incoming><bpmn:outgoing>e3</bpmn:outgoing></bpmn:serviceTask>
+    <bpmn:userTask id="manual" name="Manual Capture"><bpmn:incoming>e_no</bpmn:incoming><bpmn:outgoing>e4</bpmn:outgoing></bpmn:userTask>
+    <bpmn:endEvent id="end" name="End"><bpmn:incoming>e3</bpmn:incoming><bpmn:incoming>e4</bpmn:incoming></bpmn:endEvent>
+    <bpmn:dataObjectReference id="hu_data" name="HU Data" />
+    <bpmn:association id="assoc_hu_scan" sourceRef="hu_data" targetRef="scan" />
+    <bpmn:textAnnotation id="note_1"><bpmn:text>Manual capture required if not announced.</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="assoc_note_manual" sourceRef="note_1" targetRef="manual" />
+    <bpmn:sequenceFlow id="e1" sourceRef="start" targetRef="scan" />
+    <bpmn:sequenceFlow id="e2" sourceRef="scan" targetRef="gw" />
+    <bpmn:sequenceFlow id="e_yes" name="yes" sourceRef="gw" targetRef="measure" />
+    <bpmn:sequenceFlow id="e_no" name="not announced" sourceRef="gw" targetRef="manual" />
+    <bpmn:sequenceFlow id="e3" sourceRef="measure" targetRef="end" />
+    <bpmn:sequenceFlow id="e4" sourceRef="manual" targetRef="end" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="inbound_we_di">
+      <bpmndi:BPMNShape id="start_di" bpmnElement="start"><dc:Bounds x="100" y="120" width="56" height="56" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="scan_di" bpmnElement="scan"><dc:Bounds x="230" y="105" width="210" height="90" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="gw_di" bpmnElement="gw"><dc:Bounds x="500" y="106" width="88" height="88" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="measure_di" bpmnElement="measure"><dc:Bounds x="660" y="105" width="210" height="90" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="manual_di" bpmnElement="manual"><dc:Bounds x="660" y="310" width="210" height="90" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end_di" bpmnElement="end"><dc:Bounds x="940" y="120" width="56" height="56" /></bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

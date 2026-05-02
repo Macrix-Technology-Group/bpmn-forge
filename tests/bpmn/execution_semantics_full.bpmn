@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" id="Definitions_exec">
+  <bpmn:process id="execution_semantics_full" name="Execution Semantics Full" isExecutable="true">
+    <bpmn:startEvent id="start" name="Start"><bpmn:outgoing>e1</bpmn:outgoing></bpmn:startEvent>
+
+    <bpmn:exclusiveGateway id="xor1" name="XOR"><bpmn:incoming>e1</bpmn:incoming><bpmn:outgoing>e2</bpmn:outgoing><bpmn:outgoing>e3</bpmn:outgoing></bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="task_a" name="Task A"><bpmn:incoming>e2</bpmn:incoming><bpmn:outgoing>e4</bpmn:outgoing></bpmn:serviceTask>
+    <bpmn:serviceTask id="task_b" name="Task B"><bpmn:incoming>e3</bpmn:incoming><bpmn:outgoing>e5</bpmn:outgoing></bpmn:serviceTask>
+
+    <bpmn:parallelGateway id="and_split" name="AND Split"><bpmn:incoming>e4</bpmn:incoming><bpmn:incoming>e5</bpmn:incoming><bpmn:outgoing>e6</bpmn:outgoing><bpmn:outgoing>e7</bpmn:outgoing></bpmn:parallelGateway>
+    <bpmn:serviceTask id="parallel_a" name="Parallel A"><bpmn:incoming>e6</bpmn:incoming><bpmn:outgoing>e8</bpmn:outgoing></bpmn:serviceTask>
+    <bpmn:serviceTask id="parallel_b" name="Parallel B"><bpmn:incoming>e7</bpmn:incoming><bpmn:outgoing>e9</bpmn:outgoing></bpmn:serviceTask>
+    <bpmn:parallelGateway id="and_join" name="AND Join"><bpmn:incoming>e8</bpmn:incoming><bpmn:incoming>e9</bpmn:incoming><bpmn:outgoing>e10</bpmn:outgoing></bpmn:parallelGateway>
+
+    <bpmn:serviceTask id="mi_task" name="Multi Instance">
+      <bpmn:incoming>e10</bpmn:incoming><bpmn:outgoing>e11</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics isSequential="false">
+        <bpmn:loopCardinality>3</bpmn:loopCardinality>
+      </bpmn:multiInstanceLoopCharacteristics>
+    </bpmn:serviceTask>
+
+    <bpmn:callActivity id="call_sub" name="Call Subprocess" calledElement="called_process"><bpmn:incoming>e11</bpmn:incoming><bpmn:outgoing>e12</bpmn:outgoing></bpmn:callActivity>
+    <bpmn:endEvent id="end" name="End"><bpmn:incoming>e12</bpmn:incoming></bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="e1" sourceRef="start" targetRef="xor1" />
+    <bpmn:sequenceFlow id="e2" name="true" sourceRef="xor1" targetRef="task_a" />
+    <bpmn:sequenceFlow id="e3" name="false" sourceRef="xor1" targetRef="task_b" />
+    <bpmn:sequenceFlow id="e4" sourceRef="task_a" targetRef="and_split" />
+    <bpmn:sequenceFlow id="e5" sourceRef="task_b" targetRef="and_split" />
+    <bpmn:sequenceFlow id="e6" sourceRef="and_split" targetRef="parallel_a" />
+    <bpmn:sequenceFlow id="e7" sourceRef="and_split" targetRef="parallel_b" />
+    <bpmn:sequenceFlow id="e8" sourceRef="parallel_a" targetRef="and_join" />
+    <bpmn:sequenceFlow id="e9" sourceRef="parallel_b" targetRef="and_join" />
+    <bpmn:sequenceFlow id="e10" sourceRef="and_join" targetRef="mi_task" />
+    <bpmn:sequenceFlow id="e11" sourceRef="mi_task" targetRef="call_sub" />
+    <bpmn:sequenceFlow id="e12" sourceRef="call_sub" targetRef="end" />
+  </bpmn:process>
+</bpmn:definitions>

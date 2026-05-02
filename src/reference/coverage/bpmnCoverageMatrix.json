@@ -1,0 +1,262 @@
+{
+  "version": "25.0.0",
+  "legend": {
+    "supported": "implemented in v24/v25 pipeline",
+    "partial": "recognized or partially represented, not full semantics",
+    "missing": "not implemented yet"
+  },
+  "elements": {
+    "startEvent": {
+      "parser": "supported",
+      "exporter": "supported",
+      "renderer": "supported",
+      "semantics": "partial",
+      "tests": "partial"
+    },
+    "endEvent": {
+      "parser": "supported",
+      "exporter": "supported",
+      "renderer": "supported",
+      "semantics": "partial",
+      "tests": "partial"
+    },
+    "intermediateCatchEvent": {
+      "parser": "partial",
+      "exporter": "partial",
+      "renderer": "partial",
+      "semantics": "missing",
+      "tests": "missing"
+    },
+    "boundaryEvent": {
+      "parser": "partial",
+      "exporter": "partial",
+      "renderer": "partial",
+      "semantics": "missing",
+      "tests": "partial"
+    },
+    "messageEventDefinition": {
+      "parser": "supported",
+      "exporter": "supported",
+      "renderer": "partial",
+      "semantics": "missing",
+      "tests": "partial"
+    },
+    "timerEventDefinition": {
+      "parser": "supported",
+      "exporter": "supported",
+      "renderer": "partial",
+      "semantics": "missing",
+      "tests": "partial"
+    },
+    "errorEventDefinition": {
+      "parser": "partial",
+      "exporter": "partial",
+      "renderer": "partial",
+      "semantics": "missing",
+      "tests": "missing"
+    },
+    "signalEventDefinition": {
+      "parser": "partial",
+      "exporter": "partial",
+      "renderer": "partial",
+      "semantics": "missing",
+      "tests": "missing"
+    },
+    "escalationEventDefinition": {
+      "parser": "partial",
+      "exporter": "missing",
+      "renderer": "missing",
+      "semantics": "missing",
+      "tests": "missing"
+    },
+    "conditionalEventDefinition": {
+      "parser": "partial",
+      "exporter": "missing",
+      "renderer": "missing",
+      "semantics": "missing",
+      "tests": "missing"
+    },
+    "linkEventDefinition": {
+      "parser": "partial",
+      "exporter": "missing",
+      "renderer": "missing",
+      "semantics": "missing",
+      "tests": "missing"
+    },
+    "compensateEventDefinition": {
+      "parser": "partial",
+      "exporter": "missing",
+      "renderer": "missing",
+      "semantics": "missing",
+      "tests": "partial"
+    },
+    "task": {
+      "parser": "supported",
+      "exporter": "supported",
+      "renderer": "supported",
+      "semantics": "partial",
+      "tests": "partial"
+    },
+    "serviceTask": {
+      "parser": "supported",
+      "exporter": "supported",
+      "renderer": "supported",
+      "semantics": "partial",
+      "tests": "partial"
+    },
+    "userTask": {
+      "parser": "supported",
+      "exporter": "supported",
+      "renderer": "supported",
+      "semantics": "partial",
+      "tests": "partial"
+    },
+    "subProcess": {
+      "parser": "partial",
+      "exporter": "partial",
+      "renderer": "partial",
+      "semantics": "missing",
+      "tests": "partial"
+    },
+    "callActivity": {
+      "parser": "partial",
+      "exporter": "partial",
+      "renderer": "missing",
+      "semantics": "missing",
+      "tests": "missing"
+    },
+    "transaction": {
+      "parser": "partial",
+      "exporter": "missing",
+      "renderer": "missing",
+      "semantics": "missing",
+      "tests": "missing"
+    },
+    "exclusiveGateway": {
+      "parser": "supported",
+      "exporter": "supported",
+      "renderer": "supported",
+      "semantics": "partial",
+      "tests": "partial"
+    },
+    "parallelGateway": {
+      "parser": "supported",
+      "exporter": "partial",
+      "renderer": "supported",
+      "semantics": "missing",
+      "tests": "partial"
+    },
+    "inclusiveGateway": {
+      "parser": "partial",
+      "exporter": "missing",
+      "renderer": "partial",
+      "semantics": "missing",
+      "tests": "missing"
+    },
+    "eventBasedGateway": {
+      "parser": "partial",
+      "exporter": "missing",
+      "renderer": "partial",
+      "semantics": "missing",
+      "tests": "partial"
+    },
+    "complexGateway": {
+      "parser": "partial",
+      "exporter": "missing",
+      "renderer": "missing",
+      "semantics": "missing",
+      "tests": "missing"
+    },
+    "sequenceFlow": {
+      "parser": "supported",
+      "exporter": "supported",
+      "renderer": "supported",
+      "semantics": "partial",
+      "tests": "partial"
+    },
+    "dataObjectReference": {
+      "parser": "partial",
+      "exporter": "missing",
+      "renderer": "missing",
+      "semantics": "missing",
+      "tests": "partial"
+    },
+    "dataInputAssociation": {
+      "parser": "partial",
+      "exporter": "missing",
+      "renderer": "missing",
+      "semantics": "missing",
+      "tests": "missing"
+    },
+    "association": {
+      "parser": "partial",
+      "exporter": "missing",
+      "renderer": "missing",
+      "semantics": "missing",
+      "tests": "partial"
+    },
+    "textAnnotation": {
+      "parser": "partial",
+      "exporter": "missing",
+      "renderer": "missing",
+      "semantics": "not_applicable",
+      "tests": "partial"
+    },
+    "participant": {
+      "parser": "partial",
+      "exporter": "missing",
+      "renderer": "partial",
+      "semantics": "missing",
+      "tests": "partial"
+    },
+    "lane": {
+      "parser": "partial",
+      "exporter": "missing",
+      "renderer": "supported",
+      "semantics": "not_applicable",
+      "tests": "partial"
+    },
+    "messageFlow": {
+      "parser": "partial",
+      "exporter": "missing",
+      "renderer": "missing",
+      "semantics": "missing",
+      "tests": "missing"
+    },
+    "choreographyTask": {
+      "parser": "missing",
+      "exporter": "missing",
+      "renderer": "missing",
+      "semantics": "missing",
+      "tests": "missing"
+    },
+    "conversation": {
+      "parser": "missing",
+      "exporter": "missing",
+      "renderer": "missing",
+      "semantics": "missing",
+      "tests": "missing"
+    },
+    "BPMNShape": {
+      "parser": "partial",
+      "exporter": "partial",
+      "renderer": "partial",
+      "semantics": "not_applicable",
+      "tests": "partial"
+    },
+    "BPMNEdge": {
+      "parser": "partial",
+      "exporter": "partial",
+      "renderer": "partial",
+      "semantics": "not_applicable",
+      "tests": "partial"
+    },
+    "BPMNLabel": {
+      "parser": "missing",
+      "exporter": "missing",
+      "renderer": "missing",
+      "semantics": "not_applicable",
+      "tests": "missing"
+    }
+  }
+}

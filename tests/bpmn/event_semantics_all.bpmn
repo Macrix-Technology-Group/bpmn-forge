@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" id="Definitions_events">
+  <bpmn:process id="event_semantics_all" name="Event Semantics All" isExecutable="true">
+    <bpmn:startEvent id="start_message" name="Message Start"><bpmn:outgoing>e1</bpmn:outgoing><bpmn:messageEventDefinition /></bpmn:startEvent>
+    <bpmn:serviceTask id="work" name="Work"><bpmn:incoming>e1</bpmn:incoming><bpmn:outgoing>e2</bpmn:outgoing></bpmn:serviceTask>
+    <bpmn:boundaryEvent id="timer_boundary" name="Timer Boundary" attachedToRef="work" cancelActivity="false"><bpmn:timerEventDefinition /></bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="error_boundary" name="Error Boundary" attachedToRef="work"><bpmn:errorEventDefinition /></bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="escalation_boundary" name="Escalation Boundary" attachedToRef="work" cancelActivity="false"><bpmn:escalationEventDefinition /></bpmn:boundaryEvent>
+    <bpmn:intermediateThrowEvent id="throw_signal" name="Throw Signal"><bpmn:incoming>e2</bpmn:incoming><bpmn:outgoing>e3</bpmn:outgoing><bpmn:signalEventDefinition /></bpmn:intermediateThrowEvent>
+    <bpmn:intermediateCatchEvent id="catch_condition" name="Catch Condition"><bpmn:incoming>e3</bpmn:incoming><bpmn:outgoing>e4</bpmn:outgoing><bpmn:conditionalEventDefinition /></bpmn:intermediateCatchEvent>
+    <bpmn:intermediateThrowEvent id="throw_link" name="Throw Link"><bpmn:incoming>e4</bpmn:incoming><bpmn:outgoing>e5</bpmn:outgoing><bpmn:linkEventDefinition /></bpmn:intermediateThrowEvent>
+    <bpmn:intermediateCatchEvent id="catch_link" name="Catch Link"><bpmn:linkEventDefinition /></bpmn:intermediateCatchEvent>
+    <bpmn:intermediateThrowEvent id="throw_compensation" name="Throw Compensation"><bpmn:incoming>e5</bpmn:incoming><bpmn:outgoing>e6</bpmn:outgoing><bpmn:compensateEventDefinition /></bpmn:intermediateThrowEvent>
+    <bpmn:endEvent id="end_terminate" name="Terminate End"><bpmn:incoming>e6</bpmn:incoming><bpmn:terminateEventDefinition /></bpmn:endEvent>
+    <bpmn:sequenceFlow id="e1" sourceRef="start_message" targetRef="work" />
+    <bpmn:sequenceFlow id="e2" sourceRef="work" targetRef="throw_signal" />
+    <bpmn:sequenceFlow id="e3" sourceRef="throw_signal" targetRef="catch_condition" />
+    <bpmn:sequenceFlow id="e4" sourceRef="catch_condition" targetRef="throw_link" />
+    <bpmn:sequenceFlow id="e5" sourceRef="throw_link" targetRef="throw_compensation" />
+    <bpmn:sequenceFlow id="e6" sourceRef="throw_compensation" targetRef="end_terminate" />
+  </bpmn:process>
+</bpmn:definitions>

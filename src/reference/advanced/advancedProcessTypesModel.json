@@ -1,0 +1,80 @@
+{
+  "version": "29.0.0",
+  "model": "BPMN Advanced Process Types",
+  "processTypes": {
+    "collaboration": {
+      "elements": [
+        "collaboration",
+        "participant",
+        "messageFlow",
+        "pool"
+      ],
+      "semantics": "multi-participant process context with message flow interaction",
+      "v29Support": "model + parsing + validation + simulation trace foundation"
+    },
+    "choreography": {
+      "elements": [
+        "choreography",
+        "choreographyTask",
+        "participantRef",
+        "messageFlowRef"
+      ],
+      "semantics": "ordered message exchange behavior between participants",
+      "v29Support": "model + parsing + validation foundation"
+    },
+    "conversation": {
+      "elements": [
+        "conversation",
+        "conversationNode",
+        "conversationLink",
+        "participantRef"
+      ],
+      "semantics": "communication grouping between participants",
+      "v29Support": "model + parsing + validation foundation"
+    },
+    "transaction": {
+      "elements": [
+        "transaction",
+        "cancelEventDefinition",
+        "compensateEventDefinition"
+      ],
+      "semantics": "transactional subprocess scope with cancel and compensation behavior",
+      "v29Support": "scope model + cancel/compensation hooks"
+    },
+    "adHocSubProcess": {
+      "elements": [
+        "adHocSubProcess",
+        "completionCondition",
+        "cancelRemainingInstances"
+      ],
+      "semantics": "unordered activity execution with completion condition",
+      "v29Support": "model + validation + deterministic placeholder simulation"
+    },
+    "eventSubProcess": {
+      "elements": [
+        "subProcess triggeredByEvent=true",
+        "startEvent"
+      ],
+      "semantics": "event-triggered subprocess inside a scope, interrupting or non-interrupting",
+      "v29Support": "model + subscription mapping foundation"
+    },
+    "multiInstanceActivity": {
+      "elements": [
+        "multiInstanceLoopCharacteristics",
+        "loopCardinality",
+        "completionCondition"
+      ],
+      "semantics": "sequential or parallel instances of an activity",
+      "v29Support": "model + deterministic instance expansion foundation"
+    },
+    "callActivity": {
+      "elements": [
+        "callActivity",
+        "calledElement",
+        "ioSpecification"
+      ],
+      "semantics": "invokes external process/global task by reference",
+      "v29Support": "model + binding validation foundation"
+    }
+  }
+}

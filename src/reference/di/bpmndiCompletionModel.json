@@ -1,0 +1,81 @@
+{
+  "version": "30.0.0",
+  "model": "BPMNDI Completion Layer",
+  "elements": {
+    "BPMNDiagram": {
+      "required": [
+        "id",
+        "plane"
+      ]
+    },
+    "BPMNPlane": {
+      "required": [
+        "id",
+        "bpmnElement",
+        "planeElement"
+      ]
+    },
+    "BPMNShape": {
+      "required": [
+        "id",
+        "bpmnElement",
+        "bounds"
+      ],
+      "supports": [
+        "FlowNode",
+        "Lane",
+        "Participant",
+        "DataObject",
+        "TextAnnotation"
+      ]
+    },
+    "BPMNEdge": {
+      "required": [
+        "id",
+        "bpmnElement",
+        "waypoint"
+      ],
+      "supports": [
+        "SequenceFlow",
+        "MessageFlow",
+        "Association",
+        "DataAssociation"
+      ]
+    },
+    "BPMNLabel": {
+      "required": [
+        "bounds"
+      ],
+      "supports": [
+        "FlowNode labels",
+        "Edge labels",
+        "Lane labels",
+        "Participant labels"
+      ]
+    },
+    "Bounds": {
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ]
+    },
+    "waypoint": {
+      "required": [
+        "x",
+        "y"
+      ]
+    }
+  },
+  "compatibilityTarget": "bpmn.io / Camunda Modeler readable BPMNDI structure",
+  "supportLevelV30": {
+    "BPMNShape": "complete structural export/import",
+    "BPMNEdge": "complete structural export/import",
+    "BPMNLabel": "label bounds export/import",
+    "LaneShape": "BPMNShape with lane bpmnElement",
+    "ParticipantShape": "BPMNShape with participant bpmnElement",
+    "Bounds": "export/import",
+    "Waypoints": "export/import"
+  }
+}

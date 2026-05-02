@@ -1,0 +1,345 @@
+{
+  "version": "26.0.0",
+  "model": "BPMN Reference Meta-Model",
+  "abstractTypes": {
+    "BaseElement": {
+      "required": [
+        "id"
+      ],
+      "properties": [
+        "id",
+        "documentation",
+        "extensionElements"
+      ]
+    },
+    "FlowElement": {
+      "extends": "BaseElement",
+      "properties": [
+        "name",
+        "auditing",
+        "monitoring",
+        "categoryValueRef"
+      ]
+    },
+    "FlowNode": {
+      "extends": "FlowElement",
+      "properties": [
+        "incoming",
+        "outgoing"
+      ]
+    },
+    "Event": {
+      "extends": "FlowNode",
+      "properties": [
+        "eventDefinitions",
+        "properties"
+      ]
+    },
+    "Activity": {
+      "extends": "FlowNode",
+      "properties": [
+        "isForCompensation",
+        "default",
+        "ioSpecification",
+        "properties",
+        "loopCharacteristics",
+        "resources"
+      ]
+    },
+    "Gateway": {
+      "extends": "FlowNode",
+      "properties": [
+        "gatewayDirection"
+      ]
+    },
+    "Artifact": {
+      "extends": "BaseElement",
+      "properties": [
+        "artifactType"
+      ]
+    }
+  },
+  "concreteTypes": {
+    "StartEvent": {
+      "extends": "Event"
+    },
+    "EndEvent": {
+      "extends": "Event"
+    },
+    "IntermediateCatchEvent": {
+      "extends": "Event"
+    },
+    "IntermediateThrowEvent": {
+      "extends": "Event"
+    },
+    "BoundaryEvent": {
+      "extends": "Event",
+      "properties": [
+        "attachedToRef",
+        "cancelActivity"
+      ]
+    },
+    "Task": {
+      "extends": "Activity"
+    },
+    "ServiceTask": {
+      "extends": "Task",
+      "properties": [
+        "implementation",
+        "operationRef"
+      ]
+    },
+    "UserTask": {
+      "extends": "Task",
+      "properties": [
+        "implementation",
+        "renderings"
+      ]
+    },
+    "ManualTask": {
+      "extends": "Task"
+    },
+    "ScriptTask": {
+      "extends": "Task",
+      "properties": [
+        "scriptFormat",
+        "script"
+      ]
+    },
+    "BusinessRuleTask": {
+      "extends": "Task",
+      "properties": [
+        "implementation"
+      ]
+    },
+    "SendTask": {
+      "extends": "Task",
+      "properties": [
+        "messageRef",
+        "operationRef"
+      ]
+    },
+    "ReceiveTask": {
+      "extends": "Task",
+      "properties": [
+        "messageRef",
+        "operationRef",
+        "instantiate"
+      ]
+    },
+    "SubProcess": {
+      "extends": "Activity",
+      "properties": [
+        "flowElements",
+        "triggeredByEvent"
+      ]
+    },
+    "AdHocSubProcess": {
+      "extends": "SubProcess",
+      "properties": [
+        "completionCondition",
+        "ordering",
+        "cancelRemainingInstances"
+      ]
+    },
+    "Transaction": {
+      "extends": "SubProcess",
+      "properties": [
+        "method"
+      ]
+    },
+    "CallActivity": {
+      "extends": "Activity",
+      "properties": [
+        "calledElement"
+      ]
+    },
+    "ExclusiveGateway": {
+      "extends": "Gateway",
+      "properties": [
+        "default"
+      ]
+    },
+    "ParallelGateway": {
+      "extends": "Gateway"
+    },
+    "InclusiveGateway": {
+      "extends": "Gateway",
+      "properties": [
+        "default"
+      ]
+    },
+    "EventBasedGateway": {
+      "extends": "Gateway",
+      "properties": [
+        "instantiate",
+        "eventGatewayType"
+      ]
+    },
+    "ComplexGateway": {
+      "extends": "Gateway",
+      "properties": [
+        "activationCondition",
+        "default"
+      ]
+    },
+    "SequenceFlow": {
+      "extends": "FlowElement",
+      "properties": [
+        "sourceRef",
+        "targetRef",
+        "conditionExpression",
+        "isImmediate"
+      ]
+    },
+    "MessageFlow": {
+      "extends": "BaseElement",
+      "properties": [
+        "name",
+        "sourceRef",
+        "targetRef",
+        "messageRef"
+      ]
+    },
+    "DataObject": {
+      "extends": "FlowElement",
+      "properties": [
+        "isCollection"
+      ]
+    },
+    "DataObjectReference": {
+      "extends": "FlowElement",
+      "properties": [
+        "dataObjectRef"
+      ]
+    },
+    "DataStoreReference": {
+      "extends": "FlowElement",
+      "properties": [
+        "dataStoreRef"
+      ]
+    },
+    "DataInputAssociation": {
+      "extends": "BaseElement",
+      "properties": [
+        "sourceRef",
+        "targetRef",
+        "transformation",
+        "assignment"
+      ]
+    },
+    "DataOutputAssociation": {
+      "extends": "BaseElement",
+      "properties": [
+        "sourceRef",
+        "targetRef",
+        "transformation",
+        "assignment"
+      ]
+    },
+    "TextAnnotation": {
+      "extends": "Artifact",
+      "properties": [
+        "text",
+        "textFormat"
+      ]
+    },
+    "Association": {
+      "extends": "Artifact",
+      "properties": [
+        "sourceRef",
+        "targetRef",
+        "associationDirection"
+      ]
+    },
+    "Participant": {
+      "extends": "BaseElement",
+      "properties": [
+        "name",
+        "processRef",
+        "participantMultiplicity"
+      ]
+    },
+    "Lane": {
+      "extends": "BaseElement",
+      "properties": [
+        "name",
+        "flowNodeRef",
+        "childLaneSet"
+      ]
+    },
+    "Collaboration": {
+      "extends": "BaseElement",
+      "properties": [
+        "participants",
+        "messageFlows",
+        "artifacts"
+      ]
+    },
+    "Choreography": {
+      "extends": "Collaboration",
+      "properties": [
+        "flowElements"
+      ]
+    },
+    "Conversation": {
+      "extends": "BaseElement",
+      "properties": [
+        "participants",
+        "conversationNodes"
+      ]
+    },
+    "BPMNDiagram": {
+      "extends": "BaseElement",
+      "properties": [
+        "plane",
+        "labelStyle"
+      ]
+    },
+    "BPMNPlane": {
+      "extends": "BaseElement",
+      "properties": [
+        "bpmnElement",
+        "planeElement"
+      ]
+    },
+    "BPMNShape": {
+      "extends": "BaseElement",
+      "properties": [
+        "bpmnElement",
+        "bounds",
+        "isHorizontal",
+        "isExpanded"
+      ]
+    },
+    "BPMNEdge": {
+      "extends": "BaseElement",
+      "properties": [
+        "bpmnElement",
+        "waypoint",
+        "label"
+      ]
+    }
+  },
+  "eventDefinitions": [
+    "MessageEventDefinition",
+    "TimerEventDefinition",
+    "ErrorEventDefinition",
+    "SignalEventDefinition",
+    "EscalationEventDefinition",
+    "ConditionalEventDefinition",
+    "LinkEventDefinition",
+    "CompensateEventDefinition",
+    "TerminateEventDefinition",
+    "CancelEventDefinition"
+  ],
+  "validationRules": [
+    "Every BaseElement must have an id.",
+    "Every SequenceFlow sourceRef and targetRef must reference a FlowNode.",
+    "BoundaryEvent must have attachedToRef referencing an Activity.",
+    "Gateway default must reference an outgoing SequenceFlow.",
+    "MessageFlow sourceRef and targetRef must reference interaction-capable elements.",
+    "BPMNShape bpmnElement must reference a model element.",
+    "BPMNEdge bpmnElement must reference an edge element."
+  ]
+}

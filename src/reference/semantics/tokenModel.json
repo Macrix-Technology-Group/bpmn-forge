@@ -1,0 +1,86 @@
+{
+  "version": "27.0.0",
+  "model": "BPMN Token Model",
+  "entities": {
+    "Token": {
+      "description": "A marker representing control-flow progress in a BPMN process.",
+      "required": [
+        "id",
+        "state",
+        "location"
+      ],
+      "properties": {
+        "id": "Unique token id.",
+        "state": "active | consumed | waiting | terminated | error",
+        "location": "FlowNode id or SequenceFlow id.",
+        "scopeId": "Process or subprocess scope.",
+        "parentTokenId": "Parent token if created by split/subprocess.",
+        "createdAtStep": "Simulation step where token was created.",
+        "history": "Visited elements."
+      }
+    },
+    "Scope": {
+      "description": "Execution scope for process, subprocess, transaction or event subprocess.",
+      "required": [
+        "id",
+        "type",
+        "state"
+      ],
+      "properties": {
+        "id": "Scope id.",
+        "type": "process | subprocess | transaction | event_subprocess",
+        "state": "active | completed | cancelled | terminated | faulted",
+        "parentScopeId": "Parent scope.",
+        "tokens": "Token ids belonging to this scope."
+      }
+    },
+    "TokenState": {
+      "description": "Complete state of a token-flow simulation.",
+      "required": [
+        "processId",
+        "tokens",
+        "scopes",
+        "step"
+      ],
+      "properties": {
+        "processId": "Reference process id.",
+        "step": "Current simulation step.",
+        "tokens": "All tokens.",
+        "scopes": "All scopes.",
+        "events": "Simulation event log.",
+        "incidents": "Errors, deadlocks or unsupported semantic events."
+      }
+    },
+    "SimulationEvent": {
+      "description": "Append-only trace entry.",
+      "properties": {
+        "step": "Simulation step.",
+        "type": "TOKEN_CREATED | TOKEN_MOVED | TOKEN_CONSUMED | TOKEN_SPLIT | TOKEN_JOIN_WAIT | TOKEN_JOIN_COMPLETE | PROCESS_COMPLETED | INCIDENT",
+        "tokenId": "Related token id.",
+        "elementId": "Related BPMN element id.",
+        "message": "Human readable trace."
+      }
+    }
+  },
+  "supportedSemanticsV27": {
+    "StartEvent": "creates initial token",
+    "Task": "passes token through",
+    "ServiceTask": "passes token through",
+    "UserTask": "passes token through",
+    "ExclusiveGateway": "selects default or first outgoing flow",
+    "ParallelGateway": "splits token on multiple outgoing flows; basic join waits for all incoming tokens",
+    "EndEvent": "consumes token",
+    "SequenceFlow": "moves token between nodes"
+  },
+  "unsupportedOrPartial": [
+    "inclusive gateway semantics",
+    "event-based gateway semantics",
+    "boundary event interruption",
+    "message/timer/signal event waiting",
+    "transactions",
+    "compensation",
+    "multi-instance activities",
+    "subprocess scope execution",
+    "collaboration/message-flow execution"
+  ]
+}

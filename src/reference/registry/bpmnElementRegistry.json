@@ -1,0 +1,81 @@
+{
+  "version": "25.0.0",
+  "scope": "BPMN 2.0 Reference Coverage Framework",
+  "categories": {
+    "events": [
+      "startEvent",
+      "endEvent",
+      "intermediateCatchEvent",
+      "intermediateThrowEvent",
+      "boundaryEvent",
+      "messageEventDefinition",
+      "timerEventDefinition",
+      "errorEventDefinition",
+      "signalEventDefinition",
+      "escalationEventDefinition",
+      "conditionalEventDefinition",
+      "linkEventDefinition",
+      "compensateEventDefinition",
+      "terminateEventDefinition",
+      "cancelEventDefinition"
+    ],
+    "activities": [
+      "task",
+      "serviceTask",
+      "userTask",
+      "manualTask",
+      "scriptTask",
+      "businessRuleTask",
+      "sendTask",
+      "receiveTask",
+      "subProcess",
+      "callActivity",
+      "transaction",
+      "adHocSubProcess",
+      "multiInstanceLoopCharacteristics",
+      "standardLoopCharacteristics"
+    ],
+    "gateways": [
+      "exclusiveGateway",
+      "parallelGateway",
+      "inclusiveGateway",
+      "eventBasedGateway",
+      "complexGateway"
+    ],
+    "data": [
+      "dataObject",
+      "dataObjectReference",
+      "dataStoreReference",
+      "dataInputAssociation",
+      "dataOutputAssociation",
+      "inputOutputSpecification"
+    ],
+    "collaboration": [
+      "collaboration",
+      "participant",
+      "messageFlow",
+      "lane",
+      "laneSet"
+    ],
+    "choreography": [
+      "choreography",
+      "choreographyTask",
+      "conversation",
+      "conversationLink"
+    ],
+    "artifacts": [
+      "textAnnotation",
+      "association",
+      "group"
+    ],
+    "bpmndi": [
+      "BPMNDiagram",
+      "BPMNPlane",
+      "BPMNShape",
+      "BPMNEdge",
+      "BPMNLabel",
+      "Bounds",
+      "waypoint"
+    ]
+  }
+}

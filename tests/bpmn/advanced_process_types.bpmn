@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" id="Definitions_advanced">
+  <bpmn:collaboration id="collab_1" name="Order Collaboration">
+    <bpmn:participant id="seller" name="Seller" processRef="seller_process" />
+    <bpmn:participant id="buyer" name="Buyer" processRef="buyer_process" />
+    <bpmn:messageFlow id="mf_order" name="Order Message" sourceRef="buyer" targetRef="seller" />
+  </bpmn:collaboration>
+
+  <bpmn:choreography id="choreo_1" name="Order Choreography">
+    <bpmn:choreographyTask id="choreo_task_1" name="Exchange Order" initiatingParticipantRef="buyer">
+      <bpmn:participantRef>buyer</bpmn:participantRef>
+      <bpmn:participantRef>seller</bpmn:participantRef>
+      <bpmn:messageFlowRef>mf_order</bpmn:messageFlowRef>
+    </bpmn:choreographyTask>
+  </bpmn:choreography>
+
+  <bpmn:conversation id="conv_1" name="Order Conversation">
+    <bpmn:participantRef>buyer</bpmn:participantRef>
+    <bpmn:participantRef>seller</bpmn:participantRef>
+  </bpmn:conversation>
+  <bpmn:conversationLink id="cl_1" sourceRef="conv_1" targetRef="buyer" />
+
+  <bpmn:process id="seller_process" name="Seller Process" isExecutable="true">
+    <bpmn:startEvent id="start" name="Start"><bpmn:outgoing>e1</bpmn:outgoing></bpmn:startEvent>
+
+    <bpmn:transaction id="tx_payment" name="Payment Transaction" method="##Compensate">
+      <bpmn:serviceTask id="charge_payment" name="Charge Payment" />
+      <bpmn:boundaryEvent id="cancel_payment" attachedToRef="charge_payment">
+        <bpmn:cancelEventDefinition />
+      </bpmn:boundaryEvent>
+      <bpmn:boundaryEvent id="compensate_payment" attachedToRef="charge_payment">
+        <bpmn:compensateEventDefinition />
+      </bpmn:boundaryEvent>
+    </bpmn:transaction>
+
+    <bpmn:adHocSubProcess id="adhoc_pack" name="Ad-hoc Pack" ordering="Parallel" cancelRemainingInstances="true">
+      <bpmn:completionCondition><![CDATA[packed == true]]></bpmn:completionCondition>
+      <bpmn:manualTask id="adhoc_check" name="Check Items" />
+      <bpmn:manualTask id="adhoc_label" name="Label Package" />
+    </bpmn:adHocSubProcess>
+
+    <bpmn:subProcess id="event_sub" name="Event Subprocess" triggeredByEvent="true">
+      <bpmn:startEvent id="event_sub_start" name="Cancellation Received" isInterrupting="true">
+        <bpmn:messageEventDefinition />
+      </bpmn:startEvent>
+      <bpmn:endEvent id="event_sub_end" name="Cancelled" />
+    </bpmn:subProcess>
+
+    <bpmn:serviceTask id="mi_pick" name="Pick Items">
+      <bpmn:multiInstanceLoopCharacteristics isSequential="false">
+        <bpmn:loopCardinality>3</bpmn:loopCardinality>
+        <bpmn:completionCondition><![CDATA[completed >= required]]></bpmn:completionCondition>
+      </bpmn:multiInstanceLoopCharacteristics>
+    </bpmn:serviceTask>
+
+    <bpmn:callActivity id="call_invoice" name="Create Invoice" calledElement="invoice_process" />
+    <bpmn:endEvent id="end" name="End"><bpmn:incoming>e5</bpmn:incoming></bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="e1" sourceRef="start" targetRef="tx_payment" />
+    <bpmn:sequenceFlow id="e2" sourceRef="tx_payment" targetRef="adhoc_pack" />
+    <bpmn:sequenceFlow id="e3" sourceRef="adhoc_pack" targetRef="mi_pick" />
+    <bpmn:sequenceFlow id="e4" sourceRef="mi_pick" targetRef="call_invoice" />
+    <bpmn:sequenceFlow id="e5" sourceRef="call_invoice" targetRef="end" />
+  </bpmn:process>
+</bpmn:definitions>

@@ -1,0 +1,123 @@
+{
+  "process": {
+    "id": "we_outbound_process",
+    "name": "Outbound Order Fulfillment",
+    "isExecutable": true,
+    "nodes": [
+      { "id": "start_order",      "type": "event",   "subtype": "start",     "name": "Order released",      "event_definition": "message" },
+      { "id": "validate_stock",   "type": "task",    "subtype": "service",   "name": "Validate stock" },
+      { "id": "gw_stock",         "type": "gateway", "subtype": "exclusive", "name": "Stock available?", "gateway": { "direction": "diverging", "default_flow": "e_stock_no" } },
+      { "id": "backorder_park",   "type": "task",    "subtype": "service",   "name": "Park as backorder" },
+      { "id": "end_backorder",    "type": "event",   "subtype": "end",       "name": "Backorder parked" },
+
+      { "id": "create_wave",      "type": "task",    "subtype": "service",   "name": "Create wave" },
+      { "id": "gw_split",         "type": "gateway", "subtype": "parallel",  "name": "Split", "gateway": { "direction": "diverging" } },
+
+      { "id": "pick_lines",       "type": "task",    "subtype": "user",      "name": "Pick lines on RF" },
+      { "id": "gw_pick_ok",       "type": "gateway", "subtype": "exclusive", "name": "All lines picked?", "gateway": { "direction": "diverging", "default_flow": "e_pick_short" } },
+      { "id": "investigate",      "type": "task",    "subtype": "user",      "name": "Investigate short pick" },
+      { "id": "move_to_packing",  "type": "task",    "subtype": "service",   "name": "Move tote to packing" },
+
+      { "id": "request_label",    "type": "task",    "subtype": "send",      "name": "Request shipping label" },
+      { "id": "receive_label",    "type": "task",    "subtype": "receive",   "name": "Receive label" },
+
+      { "id": "gw_join",          "type": "gateway", "subtype": "parallel",  "name": "Join", "gateway": { "direction": "converging" } },
+
+      { "id": "consolidate_pack", "type": "task",    "subtype": "user",      "name": "Consolidate and pack" },
+      { "id": "weigh_dim",        "type": "task",    "subtype": "service",   "name": "Weigh and measure" },
+      { "id": "print_slip",       "type": "task",    "subtype": "service",   "name": "Print packing slip" },
+      { "id": "qc_check",         "type": "task",    "subtype": "user",      "name": "QC check" },
+      { "id": "gw_qc",            "type": "gateway", "subtype": "exclusive", "name": "QC pass?", "gateway": { "direction": "diverging", "default_flow": "e_qc_fail" } },
+      { "id": "stage_dock",       "type": "task",    "subtype": "service",   "name": "Stage at dock" },
+      { "id": "load_truck",       "type": "task",    "subtype": "user",      "name": "Load truck" },
+
+      { "id": "send_confirm",     "type": "task",    "subtype": "send",      "name": "Send shipment confirmation" },
+      { "id": "end_shipped",      "type": "event",   "subtype": "end",       "name": "Shipped" }
+    ],
+    "edges": [
+      { "id": "e1",  "source": "start_order",      "target": "validate_stock" },
+      { "id": "e2",  "source": "validate_stock",   "target": "gw_stock" },
+      { "id": "e_stock_yes", "source": "gw_stock", "target": "create_wave",     "condition": "stock ok",         "branch_type": "main" },
+      { "id": "e_stock_no",  "source": "gw_stock", "target": "backorder_park",  "condition": "insufficient",     "branch_type": "alternative", "isDefault": true },
+      { "id": "e_back_end",  "source": "backorder_park", "target": "end_backorder" },
+
+      { "id": "e3",  "source": "create_wave",      "target": "gw_split" },
+      { "id": "e4a", "source": "gw_split",         "target": "pick_lines" },
+      { "id": "e4b", "source": "gw_split",         "target": "request_label" },
+
+      { "id": "e5",  "source": "pick_lines",       "target": "gw_pick_ok" },
+      { "id": "e_pick_ok",    "source": "gw_pick_ok", "target": "move_to_packing", "condition": "all picked",   "branch_type": "main" },
+      { "id": "e_pick_short", "source": "gw_pick_ok", "target": "investigate",     "condition": "short pick",   "branch_type": "exception", "isDefault": true },
+      { "id": "e_invest_loop","source": "investigate", "target": "pick_lines",                                   "branch_type": "loop" },
+      { "id": "e6",  "source": "move_to_packing",  "target": "gw_join" },
+
+      { "id": "e7",  "source": "request_label",    "target": "receive_label" },
+      { "id": "e8",  "source": "receive_label",    "target": "gw_join" },
+
+      { "id": "e9",  "source": "gw_join",          "target": "consolidate_pack" },
+      { "id": "e10", "source": "consolidate_pack", "target": "weigh_dim" },
+      { "id": "e11", "source": "weigh_dim",        "target": "print_slip" },
+      { "id": "e12", "source": "print_slip",       "target": "qc_check" },
+      { "id": "e13", "source": "qc_check",         "target": "gw_qc" },
+      { "id": "e_qc_pass", "source": "gw_qc", "target": "stage_dock", "condition": "pass", "branch_type": "main" },
+      { "id": "e_qc_fail", "source": "gw_qc", "target": "consolidate_pack", "condition": "fail", "branch_type": "loop", "isDefault": true },
+
+      { "id": "e14", "source": "stage_dock",       "target": "load_truck" },
+      { "id": "e15", "source": "load_truck",       "target": "send_confirm" },
+      { "id": "e16", "source": "send_confirm",     "target": "end_shipped" }
+    ],
+    "participants": [
+      {
+        "id": "pool_erp",
+        "name": "ERP",
+        "isBlackBox": true,
+        "lanes": []
+      },
+      {
+        "id": "pool_wes",
+        "name": "WES",
+        "processRef": "we_outbound_process",
+        "lanes": [
+          {
+            "id": "lane_system",
+            "name": "System / WES",
+            "nodeRefs": [
+              "start_order", "validate_stock", "gw_stock", "backorder_park", "end_backorder",
+              "create_wave", "gw_split",
+              "request_label", "receive_label",
+              "gw_join",
+              "send_confirm", "end_shipped"
+            ]
+          },
+          {
+            "id": "lane_picker",
+            "name": "Picker",
+            "nodeRefs": ["pick_lines", "gw_pick_ok", "move_to_packing"]
+          },
+          {
+            "id": "lane_clerk",
+            "name": "Inventory Clerk",
+            "nodeRefs": ["investigate"]
+          },
+          {
+            "id": "lane_packer",
+            "name": "Packer / Loader",
+            "nodeRefs": ["consolidate_pack", "weigh_dim", "print_slip", "qc_check", "gw_qc", "stage_dock", "load_truck"]
+          }
+        ]
+      },
+      {
+        "id": "pool_carrier",
+        "name": "Carrier",
+        "isBlackBox": true,
+        "lanes": []
+      }
+    ],
+    "message_flows": [
+      { "id": "mf_order_in",     "name": "sales order",         "source": "pool_erp",       "target": "start_order" },
+      { "id": "mf_label_req",    "name": "label request",       "source": "request_label",  "target": "pool_carrier" },
+      { "id": "mf_label_resp",   "name": "label + tracking",    "source": "pool_carrier",   "target": "receive_label" },
+      { "id": "mf_ship_confirm", "name": "shipment confirmed",  "source": "send_confirm",   "target": "pool_erp" }
+    ]
+  }
+}

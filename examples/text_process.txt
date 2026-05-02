@@ -1,0 +1,1 @@
+A pallet arrives at WE01. The HU ID is scanned. If the pallet is announced, it is measured. Otherwise it is manually captured.

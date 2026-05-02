@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/bpmn-advanced-process-types.schema.json",
+  "title": "BPMN Advanced Process Types v29",
+  "type": "object",
+  "required": [
+    "version",
+    "advancedProcesses"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer"
+    },
+    "advancedProcesses": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "collaborations": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "choreographies": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "conversations": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "diagnostics": {
+      "type": "object"
+    }
+  }
+}

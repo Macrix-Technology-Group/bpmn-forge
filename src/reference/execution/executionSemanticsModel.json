@@ -1,0 +1,21 @@
+{
+  "version": "31.0.0",
+  "model": "BPMN Execution Semantics Completion Layer",
+  "semantics": {
+    "exclusiveGateway": "evaluates conditions/default and selects exactly one outgoing flow",
+    "inclusiveGateway": "OR split activates all true outgoing flows, OR join waits for active incoming branches",
+    "parallelGateway": "AND split/AND join",
+    "eventBasedGateway": "race between event subscriptions; first event wins, siblings cancelled",
+    "boundaryEvent": "interrupting/non-interrupting attached activity handling",
+    "eventSubProcess": "scoped event subscription with interrupting/non-interrupting start",
+    "transaction": "transaction scope with cancel and compensation lifecycle",
+    "compensation": "completed activity registry and compensation handler execution",
+    "multiInstance": "parallel/sequential instance expansion with completion condition",
+    "callActivity": "called process scope invocation and return mapping",
+    "messageCorrelation": "message name/key based delivery to waiting subscriptions",
+    "timerScheduling": "timer jobs registered and fired deterministically",
+    "errorPropagation": "scope walk to matching error handler",
+    "escalationPropagation": "scope walk with interrupting/non-interrupting handler behavior"
+  },
+  "supportLevelV31": "reference-semantics foundation, not production runtime persistence"
+}

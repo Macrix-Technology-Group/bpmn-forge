@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/bpmn-event-state.schema.json",
+  "title": "BPMN Event Semantics State v28",
+  "type": "object",
+  "required": [
+    "eventSubscriptions",
+    "eventLog",
+    "correlations",
+    "scopeHandlers"
+  ],
+  "properties": {
+    "eventSubscriptions": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "eventLog": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "correlations": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "scopeHandlers": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  }
+}

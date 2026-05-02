@@ -1,0 +1,109 @@
+{
+  "version": "28.0.0",
+  "model": "BPMN Event Semantics",
+  "eventDefinitions": {
+    "message": {
+      "bpmn": "MessageEventDefinition",
+      "catch": "waits for a named or correlated message",
+      "throw": "publishes a message",
+      "boundary": "interrupts or observes activity on message reception",
+      "tokenEffect": "catch waits; throw emits; boundary may cancel attached activity"
+    },
+    "timer": {
+      "bpmn": "TimerEventDefinition",
+      "catch": "waits until due date/duration/cycle condition",
+      "throw": "not applicable in standard BPMN for timer throw",
+      "boundary": "interrupts or observes activity after timer fires",
+      "tokenEffect": "catch waits; timer fire resumes token"
+    },
+    "signal": {
+      "bpmn": "SignalEventDefinition",
+      "catch": "waits for broadcast signal",
+      "throw": "broadcasts signal globally",
+      "boundary": "interrupts or observes attached activity on signal",
+      "tokenEffect": "throw may activate multiple catchers"
+    },
+    "error": {
+      "bpmn": "ErrorEventDefinition",
+      "catch": "normally boundary or event subprocess catcher",
+      "throw": "throws error to nearest matching scope handler",
+      "boundary": "interrupting error handler",
+      "tokenEffect": "propagates through scope hierarchy until caught"
+    },
+    "escalation": {
+      "bpmn": "EscalationEventDefinition",
+      "catch": "catches escalation in boundary/event subprocess",
+      "throw": "raises escalation without necessarily aborting scope",
+      "boundary": "interrupting or non-interrupting escalation",
+      "tokenEffect": "may continue source scope depending on interrupting flag"
+    },
+    "conditional": {
+      "bpmn": "ConditionalEventDefinition",
+      "catch": "waits until condition becomes true",
+      "throw": "not typical as throw event",
+      "boundary": "reacts to condition while activity runs",
+      "tokenEffect": "condition true resumes/creates token"
+    },
+    "link": {
+      "bpmn": "LinkEventDefinition",
+      "catch": "target link event",
+      "throw": "source link event",
+      "boundary": "not applicable",
+      "tokenEffect": "local goto-like transfer inside process level"
+    },
+    "compensation": {
+      "bpmn": "CompensateEventDefinition",
+      "catch": "compensation handler",
+      "throw": "triggers compensation for completed activity/scope",
+      "boundary": "marks compensation handler for activity",
+      "tokenEffect": "creates compensation token(s) for completed work"
+    },
+    "terminate": {
+      "bpmn": "TerminateEventDefinition",
+      "catch": "not applicable",
+      "throw": "terminates complete process/subprocess scope",
+      "boundary": "not applicable",
+      "tokenEffect": "all tokens in scope are terminated"
+    },
+    "cancel": {
+      "bpmn": "CancelEventDefinition",
+      "catch": "transaction cancel handler",
+      "throw": "cancels transaction",
+      "boundary": "transaction cancel boundary handler",
+      "tokenEffect": "cancels transaction scope and triggers compensation if required"
+    }
+  },
+  "semanticEvents": [
+    "MESSAGE_RECEIVED",
+    "MESSAGE_THROWN",
+    "TIMER_SCHEDULED",
+    "TIMER_FIRED",
+    "SIGNAL_THROWN",
+    "SIGNAL_CAUGHT",
+    "ERROR_THROWN",
+    "ERROR_CAUGHT",
+    "ERROR_UNCAUGHT",
+    "ESCALATION_THROWN",
+    "ESCALATION_CAUGHT",
+    "CONDITION_WAITING",
+    "CONDITION_TRUE",
+    "LINK_THROWN",
+    "LINK_CAUGHT",
+    "COMPENSATION_THROWN",
+    "COMPENSATION_STARTED",
+    "TERMINATE_SCOPE",
+    "CANCEL_TRANSACTION"
+  ],
+  "supportLevelV28": {
+    "message": "model + simulation hooks",
+    "timer": "model + deterministic immediate/queued fire",
+    "signal": "model + broadcast matching",
+    "error": "model + boundary/scope matching foundation",
+    "escalation": "model + boundary/scope matching foundation",
+    "conditional": "model + condition hook",
+    "link": "model + throw-to-catch local transfer",
+    "compensation": "model + compensation event records",
+    "terminate": "model + scope token termination",
+    "cancel": "model + transaction cancel event records"
+  }
+}

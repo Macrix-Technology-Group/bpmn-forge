@@ -1,0 +1,96 @@
+{
+  "process": {
+    "id": "we_inbound_process",
+    "name": "Wareneingang Palette - WE01",
+    "isExecutable": true,
+    "nodes": [
+      {
+        "id": "start",
+        "type": "event",
+        "subtype": "start",
+        "name": "Palette auf WE01",
+        "event_definition": "message"
+      },
+      {
+        "id": "scan_hu",
+        "type": "task",
+        "subtype": "service",
+        "name": "HU ID scannen",
+        "execution": {
+          "handler": "scanHuHandler"
+        }
+      },
+      {
+        "id": "gw_announced",
+        "type": "gateway",
+        "subtype": "exclusive",
+        "name": "Palette avisiert?",
+        "gateway": {
+          "direction": "diverging",
+          "default_flow": "e_no"
+        }
+      },
+      {
+        "id": "manual_capture",
+        "type": "task",
+        "subtype": "user",
+        "name": "WE manuell erfassen",
+        "execution": {
+          "formKey": "we-manual-capture"
+        }
+      },
+      {
+        "id": "measure",
+        "type": "task",
+        "subtype": "service",
+        "name": "Wiegen und Kontur messen",
+        "execution": {
+          "handler": "measureAndContourHandler"
+        }
+      },
+      {
+        "id": "end_ok",
+        "type": "event",
+        "subtype": "end",
+        "name": "Eingelagert"
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "source": "start",
+        "target": "scan_hu"
+      },
+      {
+        "id": "e2",
+        "source": "scan_hu",
+        "target": "gw_announced"
+      },
+      {
+        "id": "e_yes",
+        "source": "gw_announced",
+        "target": "measure",
+        "condition": "avisiert",
+        "branch_type": "main"
+      },
+      {
+        "id": "e_no",
+        "source": "gw_announced",
+        "target": "manual_capture",
+        "condition": "nicht avisiert",
+        "branch_type": "alternative",
+        "isDefault": true
+      },
+      {
+        "id": "e3",
+        "source": "manual_capture",
+        "target": "measure"
+      },
+      {
+        "id": "e4",
+        "source": "measure",
+        "target": "end_ok"
+      }
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" id="Definitions_ext">
+  <bpmn:process id="extended_coverage" name="Extended Coverage" isExecutable="true">
+    <bpmn:startEvent id="start" name="Start"><bpmn:outgoing>e1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:subProcess id="sub1" name="Embedded Subprocess">
+      <bpmn:startEvent id="sub_start" name="Sub Start" />
+      <bpmn:serviceTask id="sub_task" name="Sub Task" />
+      <bpmn:endEvent id="sub_end" name="Sub End" />
+      <bpmn:sequenceFlow id="sub_e1" sourceRef="sub_start" targetRef="sub_task" />
+      <bpmn:sequenceFlow id="sub_e2" sourceRef="sub_task" targetRef="sub_end" />
+    </bpmn:subProcess>
+    <bpmn:boundaryEvent id="compensation_boundary" attachedToRef="sub1"><bpmn:compensateEventDefinition /></bpmn:boundaryEvent>
+    <bpmn:eventBasedGateway id="event_gw" name="Wait for event" />
+    <bpmn:dataObjectReference id="data_order" name="Order Data" />
+    <bpmn:textAnnotation id="annotation_1"><bpmn:text>Extended BPMN coverage sample.</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="assoc_1" sourceRef="data_order" targetRef="sub1" />
+    <bpmn:endEvent id="end" name="End" />
+    <bpmn:sequenceFlow id="e1" sourceRef="start" targetRef="sub1" />
+    <bpmn:sequenceFlow id="e2" sourceRef="sub1" targetRef="event_gw" />
+    <bpmn:sequenceFlow id="e3" sourceRef="event_gw" targetRef="end" />
+  </bpmn:process>
+</bpmn:definitions>

@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/bpmn-reference-model.schema.json",
+  "title": "BPMN Reference Model v26",
+  "type": "object",
+  "required": [
+    "modelType",
+    "version",
+    "definitions"
+  ],
+  "properties": {
+    "modelType": {
+      "const": "BPMN_REFERENCE_MODEL"
+    },
+    "version": {
+      "type": "integer"
+    },
+    "definitions": {
+      "type": "object",
+      "required": [
+        "id",
+        "rootElements"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "rootElements": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "diagrams": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "process": {
+      "type": "object"
+    },
+    "collaboration": {
+      "type": "object"
+    },
+    "diagnostics": {
+      "type": "object"
+    }
+  }
+}

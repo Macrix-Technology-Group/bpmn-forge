@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/bpmn-execution-state.schema.json",
+  "title": "BPMN Execution State v31",
+  "type": "object",
+  "required": [
+    "processId",
+    "step",
+    "tokens",
+    "scopes",
+    "jobs",
+    "subscriptions",
+    "completedActivities",
+    "trace",
+    "incidents"
+  ],
+  "properties": {
+    "processId": {
+      "type": "string"
+    },
+    "step": {
+      "type": "integer"
+    },
+    "tokens": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "scopes": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "jobs": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "subscriptions": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "completedActivities": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "trace": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "incidents": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  }
+}

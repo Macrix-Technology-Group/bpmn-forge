@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" id="Definitions_we">
+  <bpmn:process id="inbound_we" name="Inbound WE" isExecutable="true">
+    <bpmn:startEvent id="start" name="Palette on WE01"><bpmn:outgoing>e1</bpmn:outgoing><bpmn:messageEventDefinition /></bpmn:startEvent>
+    <bpmn:serviceTask id="scan" name="Scan HU"><bpmn:incoming>e1</bpmn:incoming><bpmn:outgoing>e2</bpmn:outgoing></bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="gw" name="Announced?" default="e_no"><bpmn:incoming>e2</bpmn:incoming><bpmn:outgoing>e_yes</bpmn:outgoing><bpmn:outgoing>e_no</bpmn:outgoing></bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="measure" name="Measure"><bpmn:incoming>e_yes</bpmn:incoming><bpmn:outgoing>e3</bpmn:outgoing></bpmn:serviceTask>
+    <bpmn:userTask id="manual" name="Manual Capture"><bpmn:incoming>e_no</bpmn:incoming><bpmn:outgoing>e4</bpmn:outgoing></bpmn:userTask>
+    <bpmn:endEvent id="end" name="End"><bpmn:incoming>e3</bpmn:incoming><bpmn:incoming>e4</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="e1" sourceRef="start" targetRef="scan" />
+    <bpmn:sequenceFlow id="e2" sourceRef="scan" targetRef="gw" />
+    <bpmn:sequenceFlow id="e_yes" name="yes" sourceRef="gw" targetRef="measure" />
+    <bpmn:sequenceFlow id="e_no" name="not announced" sourceRef="gw" targetRef="manual" />
+    <bpmn:sequenceFlow id="e3" sourceRef="measure" targetRef="end" />
+    <bpmn:sequenceFlow id="e4" sourceRef="manual" targetRef="end" />
+  </bpmn:process>
+</bpmn:definitions>

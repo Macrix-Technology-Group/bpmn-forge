@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/bpmn-token-state.schema.json",
+  "title": "BPMN Token State v27",
+  "type": "object",
+  "required": [
+    "processId",
+    "step",
+    "tokens",
+    "scopes",
+    "events",
+    "incidents"
+  ],
+  "properties": {
+    "processId": {
+      "type": "string"
+    },
+    "step": {
+      "type": "integer"
+    },
+    "tokens": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "state",
+          "location",
+          "scopeId"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "active",
+              "consumed",
+              "waiting",
+              "terminated",
+              "error"
+            ]
+          },
+          "location": {
+            "type": "string"
+          },
+          "scopeId": {
+            "type": "string"
+          },
+          "parentTokenId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAtStep": {
+            "type": "integer"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "scopes": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "incidents": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  }
+}
