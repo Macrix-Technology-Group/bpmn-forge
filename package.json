@@ -1,8 +1,31 @@
 {
-  "name": "bpmn-forge",
-  "version": "31.0.0",
+  "name": "@macrix-technology-group/bpmn-forge",
+  "version": "0.1.1",
   "type": "module",
   "description": "BPMN 2.0 reference engine — parser, reference model, token/event/execution semantics, BPMNDI roundtrip, SVG rendering",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./schemas/bpmn-ir": "./schemas/bpmn-ir.schema.json",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src/",
+    "schemas/",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git"
+  },
+  "homepage": "https://github.com/Macrix-Technology-Group/bpmn-forge",
+  "bugs": {
+    "url": "https://github.com/Macrix-Technology-Group/bpmn-forge/issues"
+  },
+  "license": "UNLICENSED",
+  "publishConfig": {
+    "access": "restricted"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
     "elkjs": "^0.9.3"
