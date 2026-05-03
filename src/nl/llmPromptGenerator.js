@@ -181,6 +181,26 @@ export async function generateIrFromPromptLlm(prompt, options = {}) {
   const client = new Anthropic();
   const model = options.model || process.env.ANTHROPIC_MODEL || DEFAULT_MODEL;
 
+  // `repair` lets a caller continue an existing turn: when the validator on
+  // the previous IR finds errors, we send the previous JSON back as an
+  // assistant message and ask the model to fix it. The system prompt and
+  // user prompt stay byte-identical so the prompt cache still hits.
+  const messages = [{ role: 'user', content: String(prompt) }];
+  if (options.repair) {
+    messages.push({
+      role: 'assistant',
+      content: JSON.stringify(options.repair.previousIr)
+    });
+    messages.push({
+      role: 'user',
+      content:
+        'The IR you just produced has these structural errors. Re-emit the FULL IR, ' +
+        'corrected, following the rules in the system prompt. Do not explain — output ' +
+        'only the JSON.\n\nErrors:\n' +
+        options.repair.errors.map(e => `- ${e}`).join('\n')
+    });
+  }
+
   const response = await client.messages.create({
     model,
     max_tokens: 8192,
@@ -196,7 +216,7 @@ export async function generateIrFromPromptLlm(prompt, options = {}) {
         cache_control: { type: 'ephemeral' }
       }
     ],
-    messages: [{ role: 'user', content: String(prompt) }]
+    messages
   });
 
   const text = extractFirstTextBlock(response.content);
