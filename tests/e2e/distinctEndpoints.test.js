@@ -128,6 +128,53 @@ describe('distinctEndpoints invariant', () => {
     expect(svg.length).toBeGreaterThan(100);
   });
 
+  // Iron rule: a boundary event's outgoing connector must exit perpendicular
+  // to its attached host edge — never horizontally. The glyph straddles the
+  // host edge, so a horizontal exit would run through the host activity.
+  it('swimlane: boundary event outflow exits perpendicular to its host edge', async () => {
+    const ir = {
+      process: {
+        id: 'p_be', name: 'BE',
+        nodes: [
+          { id: 's',    type: 'event', subtype: 'start',    name: 'Start' },
+          { id: 'svc',  type: 'task',  subtype: 'user',     name: 'Perform On-Site Service' },
+          { id: 'be',   type: 'event', subtype: 'boundary', name: '4-Hour Window Exceeded',
+            attachedTo: 'svc', interrupting: true, event_definition: 'timer' },
+          { id: 'esc',  type: 'task',  subtype: 'user',     name: 'Escalate' },
+          { id: 'next', type: 'task',  subtype: 'user',     name: 'Next' },
+          { id: 'e',    type: 'event', subtype: 'end',      name: 'End' }
+        ],
+        edges: [
+          { id: 'e1', source: 's',    target: 'svc' },
+          { id: 'e2', source: 'svc',  target: 'next' },
+          { id: 'e3', source: 'next', target: 'e' },
+          { id: 'e4', source: 'be',   target: 'esc', branch_type: 'exception' },
+          { id: 'e5', source: 'esc',  target: 'e' }
+        ],
+        participants: [{
+          id: 'p1', name: 'P', lanes: [
+            { id: 'l1', name: 'Field Engineer', nodeRefs: ['s', 'svc', 'be', 'next', 'e'] },
+            { id: 'l2', name: 'Coordinator',    nodeRefs: ['esc'] }
+          ]
+        }]
+      }
+    };
+    const { renderSwimlaneSvg } = await import('../../src/swimlaneSvgRenderer.js');
+    const svg = await renderSwimlaneSvg(ir);
+    // The boundary's exception flow (the only branch_type=exception edge —
+    // rendered with stroke-dasharray) must have its first segment vertical.
+    const exceptionPath = [...svg.matchAll(/<path class="flow" d="([^"]+)"[^>]*stroke-dasharray/g)][0]?.[1];
+    expect(exceptionPath, 'no exception/boundary path found').toBeDefined();
+    const pts = exceptionPath.replace(/^M/, '').split(' L').map(p => {
+      const [x, y] = p.split(',').map(Number);
+      return { x, y };
+    });
+    // First segment perpendicular to the host edge means start.x === bend1.x.
+    expect(pts[0].x).toBe(pts[1].x);
+    // And the segment must be NON-zero (some vertical distance traversed).
+    expect(Math.abs(pts[1].y - pts[0].y)).toBeGreaterThan(20);
+  });
+
   // ELK renderer: a back-edge (loop) must route as a clean U BELOW the layout,
   // not as a long zigzag through the middle of the diagram.
   it('ELK renderer routes back-edges as U-shape below the layout', async () => {

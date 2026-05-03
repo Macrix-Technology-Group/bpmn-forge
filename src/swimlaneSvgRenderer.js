@@ -284,8 +284,12 @@ function buildPositionedNodes(elkChildren, placement, stackByLane, columnMaxWidt
 
 // Wraps the shared classifyGatewayBranches rule for the swimlane renderer's
 // edge shape (edges carry `sources`/`targets` arrays plus `data`). Non-gateway
-// sources and single-fan sources always exit right — that's renderer-policy,
-// not part of the shared rule.
+// sources and single-fan sources exit right by default. Boundary events are
+// the exception: they exit perpendicular to the host edge they ride on (the
+// glyph straddles that edge, so going right would have the connector run
+// horizontally through the host activity). _edge='top' → exit UP, _edge=
+// 'bottom' → exit DOWN. Same convention the ELK renderer applies via
+// rerouteBoundaryEdge.
 function assignSourcePorts(edges, positioned) {
   const outBySource = new Map();
   for (const e of edges) {
@@ -297,6 +301,11 @@ function assignSourcePorts(edges, positioned) {
   const portByEdge = new Map();
   for (const [sid, outs] of outBySource) {
     const s = positioned.get(sid);
+    if (s?.data?.subtype === 'boundary') {
+      const port = s._edge === 'top' ? 'top' : 'bottom';
+      for (const e of outs) portByEdge.set(e.id, port);
+      continue;
+    }
     if (!s || s.data?.type !== 'gateway' || outs.length < 2) {
       for (const e of outs) portByEdge.set(e.id, 'right');
       continue;
@@ -889,10 +898,22 @@ export async function renderSwimlaneSvg(ir) {
     const top = blocked?.has('top'), bot = blocked?.has('bottom');
     // Cardinals first, diagonals as fallback. Per user rule: when N/E/S/W
     // are all blocked, try NW, SW, NE, SE in that order.
+    //
+    // Boundary events are special: the glyph straddles its host's edge and
+    // its outflow trunk runs perpendicular to that edge through the glyph's
+    // column. Both 'above' and 'below' would either land inside the host or
+    // collide with the trunk, so the label must go to a SIDE. Prefer the
+    // outward diagonal (sw for bottom-edge boundary, nw for top-edge) so the
+    // label hugs the glyph corner instead of straddling the trunk column.
     const candidates = [];
-    if (!top) candidates.push('above');
-    if (!bot) candidates.push('below');
-    candidates.push('right', 'left', 'nw', 'sw', 'ne', 'se');
+    if (n.data?.subtype === 'boundary') {
+      if (n._edge === 'bottom') candidates.push('sw', 'left', 'se', 'right');
+      else candidates.push('nw', 'left', 'ne', 'right');
+    } else {
+      if (!top) candidates.push('above');
+      if (!bot) candidates.push('below');
+      candidates.push('right', 'left', 'nw', 'sw', 'ne', 'se');
+    }
     const others = otherNodeBoxes(n.id);
     let labelPosition;
     for (const c of candidates) {
