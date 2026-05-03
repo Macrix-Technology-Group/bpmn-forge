@@ -18,6 +18,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Per-user dev-tool config (Claude Code etc.)
+.claude/
+
 # Logs
 *.log
 npm-debug.log*
