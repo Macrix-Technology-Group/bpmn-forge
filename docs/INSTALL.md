@@ -8,14 +8,14 @@ This guide walks you through installing `bpmn-forge` directly from the GitHub re
 
 ```bash
 # in the consumer project
-npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.1.1"
+npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.2.0"
 ```
 
 ```ts
 import { importBpmnXml, renderUnifiedSvg } from '@macrix-technology-group/bpmn-forge';
 ```
 
-Pin to a tag (`#0.1.1`) — never to `main` — so a future commit on `main` doesn't silently change your dependency.
+Pin to a tag (`#0.2.0`) — never to `main` — so a future commit on `main` doesn't silently change your dependency.
 
 ---
 
@@ -57,10 +57,10 @@ Pick one of these patterns. The first is recommended.
 ### A. Pin to a release tag (recommended)
 
 ```bash
-npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.1.1"
+npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.2.0"
 ```
 
-`#0.1.1` is the git ref to check out. Released tags are listed at <https://github.com/Macrix-Technology-Group/bpmn-forge/tags>.
+`#0.2.0` is the git ref to check out. Released tags are listed at <https://github.com/Macrix-Technology-Group/bpmn-forge/tags>.
 
 This is **reproducible**: re-running `npm install` always pulls the same code.
 
@@ -136,17 +136,29 @@ node index.js
 
 ```ts
 // app/api/render/route.ts
-import { importBpmnXml, renderUnifiedSvg } from '@macrix-technology-group/bpmn-forge';
+import { importBpmnXml, renderUnifiedSvg, type BpmnIr } from '@macrix-technology-group/bpmn-forge';
 
 export async function POST(req: Request) {
   const xml = await req.text();
-  const ir = importBpmnXml(xml);
+  const ir: BpmnIr = importBpmnXml(xml);
   const { svg } = await renderUnifiedSvg(ir);
   return new Response(svg, {
     headers: { 'content-type': 'image/svg+xml; charset=utf-8' }
   });
 }
 ```
+
+### TypeScript support
+
+From **0.2.0** onwards, types ship with the package — `package.json` exports a `types` condition pointing at `src/index.d.ts`. You get autocomplete and type errors automatically with `moduleResolution: "bundler"` or `"node16"` / `"nodenext"`. No `@types/...` package or local ambient declaration needed.
+
+The .d.ts covers:
+
+- IR core types: discriminated `Node` union (`EventNode` | `TaskNode` | `GatewayNode` | `SubprocessNode`) with subtype + event-definition string-literal unions, `Edge` with `branch_type`, `Participant` / `Lane`, `MessageFlow`, `DataObject`, `DataAssociation`.
+- Function signatures for all 25 public exports.
+- Return shapes for `validateIr`, `verifyIr`, `runVerifiedRender`, `coverage`, `buildExecutionManifest`, `irToElsaWorkflow`.
+
+Reference-model and simulator state objects (`adaptIrToReferenceModelV26`, `simulateStrongExecution*`, `simulateTokenFlow`) are typed loosely as `Record<string, unknown>` for now — those subsystems are still evolving.
 
 ### Public API surface
 
@@ -192,10 +204,10 @@ Commit the resulting `package-lock.json` change so collaborators pick up the sam
 
 ```bash
 # yarn
-yarn add "@macrix-technology-group/bpmn-forge@git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.1.1"
+yarn add "@macrix-technology-group/bpmn-forge@git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.2.0"
 
 # pnpm
-pnpm add "github:Macrix-Technology-Group/bpmn-forge#0.1.1"
+pnpm add "github:Macrix-Technology-Group/bpmn-forge#0.2.0"
 ```
 
 ---
@@ -209,7 +221,7 @@ If it becomes private, you have two options:
 ### Option A — SSH
 
 ```bash
-npm install "git+ssh://git@github.com/Macrix-Technology-Group/bpmn-forge.git#0.1.1"
+npm install "git+ssh://git@github.com/Macrix-Technology-Group/bpmn-forge.git#0.2.0"
 ```
 
 Requires your SSH key to be authorized on the org and `ssh-agent` running. CI runners need a deploy key.
@@ -219,7 +231,7 @@ Requires your SSH key to be authorized on the org and `ssh-agent` running. CI ru
 ```bash
 # locally
 git config --global url."https://YOUR_PAT@github.com/".insteadOf "https://github.com/"
-npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.1.1"
+npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.2.0"
 ```
 
 For CI, set `GITHUB_TOKEN` (or a fine-grained PAT with `Contents: read` on the repo) and use the same `insteadOf` trick in the workflow.
@@ -232,7 +244,7 @@ For CI, set `GITHUB_TOKEN` (or a fine-grained PAT with `Contents: read` on the r
 |---|---|
 | `Error [ERR_REQUIRE_ESM]: require() of ES Module …` | Your consumer is CommonJS. Either set `"type": "module"` in `package.json`, rename the importing file to `.mjs`, or use a dynamic `await import(...)`. |
 | `Cannot find package '@macrix-technology-group/bpmn-forge'` | The install probably failed silently. Re-run `npm install` and watch for git/network errors. |
-| `npm ERR! 404` on git URL | Check the spelling of the org/repo name and the tag (`#0.1.1`). Tags are at <https://github.com/Macrix-Technology-Group/bpmn-forge/tags>. |
+| `npm ERR! 404` on git URL | Check the spelling of the org/repo name and the tag (`#0.2.0`). Tags are at <https://github.com/Macrix-Technology-Group/bpmn-forge/tags>. |
 | `Permission denied (publickey)` | Repo flipped private and your SSH key isn't authorized. See [Private-repo auth](#private-repo-auth). |
 | `elkjs` errors at runtime in the browser | `bpmn-forge` is intended to run in **Node** (server-side / API routes / Node CLIs). Do not import it from a Vite/Next.js client component — call it from a route handler / server action and ship the resulting SVG to the client. |
 
