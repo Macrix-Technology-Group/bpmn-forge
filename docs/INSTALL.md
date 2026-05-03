@@ -1,21 +1,27 @@
-# Installing `@macrix-technology-group/bpmn-forge` from GitHub
+# Installing `@macrix-technology-group/bpmn-forge`
 
-This guide walks you through installing `bpmn-forge` directly from the GitHub repository — no npm registry account or `npm publish` required. Use this when you want to consume the library from another project (TS web app, Node service, CLI tool) without setting up a private registry.
+This guide covers two install paths:
+
+- **From npm** (recommended) — short and standard. Requires npm credentials with read access to the `@macrix-technology-group` scope.
+- **From GitHub** — useful when consumers don't have npm scope access yet, or when you want to pin to an exact commit SHA.
 
 ---
 
 ## TL;DR
 
 ```bash
-# in the consumer project
-npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.2.0"
+# from npm (recommended)
+npm install @macrix-technology-group/bpmn-forge@0.3.0
+
+# from GitHub (pin to a release tag)
+npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.0"
 ```
 
 ```ts
 import { importBpmnXml, renderUnifiedSvg } from '@macrix-technology-group/bpmn-forge';
 ```
 
-Pin to a tag (`#0.2.0`) — never to `main` — so a future commit on `main` doesn't silently change your dependency.
+When pinning from GitHub, pin to a tag (`#0.3.0`) — never to `main` — so a future commit on `main` doesn't silently change your dependency.
 
 ---
 
@@ -57,10 +63,10 @@ Pick one of these patterns. The first is recommended.
 ### A. Pin to a release tag (recommended)
 
 ```bash
-npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.2.0"
+npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.0"
 ```
 
-`#0.2.0` is the git ref to check out. Released tags are listed at <https://github.com/Macrix-Technology-Group/bpmn-forge/tags>.
+`#0.3.0` is the git ref to check out. Released tags are listed at <https://github.com/Macrix-Technology-Group/bpmn-forge/tags>.
 
 This is **reproducible**: re-running `npm install` always pulls the same code.
 
@@ -180,6 +186,23 @@ These named exports are stable and safe to import from the package root:
 
 ## 5. Updating to a new version
 
+### Migrating to 0.3.0 (breaking changes)
+
+If you're upgrading from 0.2.0:
+
+- **`renderSvg` is removed.** It was a v1 fallback renderer with no swimlane / boundary-event / proper-edge-label support. Switch to `renderUnifiedSvg` (auto-picks ELK or swimlane based on whether participants have lanes) or call `renderElkSvg` / `renderSwimlaneSvg` directly.
+- **`runVerifiedRender` is now async.** It runs the unified renderer internally, which is `Promise`-based. Add `await`:
+
+  ```diff
+  - const result = runVerifiedRender(xml);
+  + const result = await runVerifiedRender(xml);
+  ```
+
+- **`runVerifiedRender` result has a new `renderMode: 'elk' | 'swimlanes'` field** so callers can know which renderer ran without re-deriving from the IR.
+- **No two connectors will ever share an attach point** on a node — distinct-endpoint distribution runs as a hard render-time invariant. If you were post-processing rendered SVG to nudge overlapping arrows, you can drop that workaround.
+
+### Bumping the dependency
+
 Bump the tag in your `package.json` `dependencies`, then reinstall:
 
 ```jsonc
@@ -187,7 +210,7 @@ Bump the tag in your `package.json` `dependencies`, then reinstall:
 {
   "dependencies": {
     "@macrix-technology-group/bpmn-forge":
-      "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.2.0"
+      "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.0"
   }
 }
 ```
@@ -204,10 +227,10 @@ Commit the resulting `package-lock.json` change so collaborators pick up the sam
 
 ```bash
 # yarn
-yarn add "@macrix-technology-group/bpmn-forge@git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.2.0"
+yarn add "@macrix-technology-group/bpmn-forge@git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.0"
 
 # pnpm
-pnpm add "github:Macrix-Technology-Group/bpmn-forge#0.2.0"
+pnpm add "github:Macrix-Technology-Group/bpmn-forge#0.3.0"
 ```
 
 ---
@@ -221,7 +244,7 @@ If it becomes private, you have two options:
 ### Option A — SSH
 
 ```bash
-npm install "git+ssh://git@github.com/Macrix-Technology-Group/bpmn-forge.git#0.2.0"
+npm install "git+ssh://git@github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.0"
 ```
 
 Requires your SSH key to be authorized on the org and `ssh-agent` running. CI runners need a deploy key.
@@ -231,7 +254,7 @@ Requires your SSH key to be authorized on the org and `ssh-agent` running. CI ru
 ```bash
 # locally
 git config --global url."https://YOUR_PAT@github.com/".insteadOf "https://github.com/"
-npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.2.0"
+npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.0"
 ```
 
 For CI, set `GITHUB_TOKEN` (or a fine-grained PAT with `Contents: read` on the repo) and use the same `insteadOf` trick in the workflow.
@@ -244,7 +267,7 @@ For CI, set `GITHUB_TOKEN` (or a fine-grained PAT with `Contents: read` on the r
 |---|---|
 | `Error [ERR_REQUIRE_ESM]: require() of ES Module …` | Your consumer is CommonJS. Either set `"type": "module"` in `package.json`, rename the importing file to `.mjs`, or use a dynamic `await import(...)`. |
 | `Cannot find package '@macrix-technology-group/bpmn-forge'` | The install probably failed silently. Re-run `npm install` and watch for git/network errors. |
-| `npm ERR! 404` on git URL | Check the spelling of the org/repo name and the tag (`#0.2.0`). Tags are at <https://github.com/Macrix-Technology-Group/bpmn-forge/tags>. |
+| `npm ERR! 404` on git URL | Check the spelling of the org/repo name and the tag (`#0.3.0`). Tags are at <https://github.com/Macrix-Technology-Group/bpmn-forge/tags>. |
 | `Permission denied (publickey)` | Repo flipped private and your SSH key isn't authorized. See [Private-repo auth](#private-repo-auth). |
 | `elkjs` errors at runtime in the browser | `bpmn-forge` is intended to run in **Node** (server-side / API routes / Node CLIs). Do not import it from a Vite/Next.js client component — call it from a route handler / server action and ship the resulting SVG to the client. |
 
