@@ -1,10 +1,5 @@
 import { exportBpmnXml, esc } from './bpmnXmlExporter.js';
-
-function nodeSize(node) {
-  if (node.type === 'event') return { width: 56, height: 56 };
-  if (node.type === 'gateway') return { width: 88, height: 88 };
-  return { width: 210, height: 90 };
-}
+import { nodeSize } from './nodeGeometry.js';
 
 function computeLayout(ir) {
   const nodes = [...(ir.process.nodes || [])];

@@ -1,8 +1,5 @@
-export function nodeSize(node) {
-  if (node.type === 'event') return { width: 56, height: 56 };
-  if (node.type === 'gateway') return { width: 88, height: 88 };
-  return { width: 210, height: 90 };
-}
+import { nodeSize } from './nodeGeometry.js';
+export { nodeSize };
 
 // A "boundary handler chain" is a set of nodes that exists *only* to handle
 // the boundary event — every node in the set has its single inflow from the

@@ -1,6 +1,11 @@
 import ELK from 'elkjs/lib/elk.bundled.js';
 import { irToElkGraph, nodeSize, collectBoundaryChains } from './irToElkGraph.js';
 import { drawNodeAt, drawEdge, svgDocument } from './svgPrimitives.js';
+import { enforceDistinctEndpoints, findOverlappingEndpoints } from './distinctEndpoints.js';
+import { detectLoopEdges } from './loopDetection.js';
+import { classifyGatewayBranches } from './gatewayPorts.js';
+import { boundaryAttachPoint, indexBoundariesByEdge } from './boundaryPlacement.js';
+import { nodeBox } from './nodeGeometry.js';
 
 const HANDLER_VERTICAL_OFFSET = 130;  // vertical gap between boundary and first chained node
 const CHAIN_STEP = 110;               // vertical gap between successive chained nodes
@@ -14,58 +19,34 @@ const LABEL_TRUNK_CLEARANCE = 60;
 const BOUNDARY_LABEL_GLYPH_MARGIN_X = LABEL_TRUNK_CLEARANCE - 28;
 const BOUNDARY_LABEL_GLYPH_MARGIN_Y = 8;
 
-// Boundary events ride on their host's edge. The IR signal `interrupting`
-// picks which edge: interrupting boundaries sit on the BOTTOM, non-interrupting
-// boundaries sit on the TOP. A single boundary on an edge sits at the host's
-// horizontal CENTER so its outflow can run as a clean straight vertical to a
-// handler placed in the same column. Multiple boundaries on the same edge
-// stagger left/right from center to keep them visually grouped on that edge.
+// Wraps the shared boundary placement rule for the ELK renderer's coord shape.
+// The ELK path additionally tracks label-anchor positions so the boundary
+// label clears its host's left edge — see BOUNDARY_LABEL_* constants above.
 function placeBoundaries(boundaryNodes, layoutChildrenById) {
-  const groups = new Map();
-  for (const b of boundaryNodes) {
-    const host = layoutChildrenById.get(b.attachedTo);
-    if (!host) continue;
-    const edgeName = b.interrupting === false ? 'top' : 'bottom';
-    const key = `${b.attachedTo}:${edgeName}`;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(b);
-  }
-  const placed = [];
+  const indexed = indexBoundariesByEdge(boundaryNodes);
   const size = nodeSize({ type: 'event' });
-  const stagger = 36;
-  for (const [key, group] of groups) {
-    const [hostId, edgeName] = key.split(':');
-    const host = layoutChildrenById.get(hostId);
-    const hostCx = host.x + host.width / 2;
-    group.forEach((b, i) => {
-      // Stagger from center: 0 → host center, 1 → +stagger, 2 → -stagger, ...
-      const slot = i === 0 ? 0 : (i % 2 === 1 ? Math.ceil(i / 2) : -Math.ceil(i / 2));
-      const cx = hostCx + slot * stagger;
-      const cy = edgeName === 'top' ? host.y : host.y + host.height;
-      const glyphLeft = cx - size.width / 2;
-      const glyphTop = cy - size.height / 2;
-      const glyphBottom = cy + size.height / 2;
-      // NW (top boundary) / SW (bottom boundary) corner placement: label
-      // sits diagonally up-left or down-left of the glyph. Anchor the
-      // RIGHT edge of the label to the host's outer left edge (not the
-      // glyph's own left, which sits inside the host) so the label's
-      // X column is well clear of the outflow trunk that runs at the
-      // glyph's center. Two-line side labels straddle anchorY by
-      // ±(lineHeight/2 + 4); pre-bias so the whole block sits fully
-      // above (top) or below (bottom) the glyph.
-      placed.push({
-        id: b.id,
-        x: glyphLeft,
-        y: glyphTop,
-        width: size.width,
-        height: size.height,
-        data: b,
-        _edge: edgeName,
-        _labelAnchorX: glyphLeft - BOUNDARY_LABEL_GLYPH_MARGIN_X,
-        _labelAnchorY: edgeName === 'top'
-          ? glyphTop - BOUNDARY_LABEL_GLYPH_MARGIN_Y - 11
-          : glyphBottom + BOUNDARY_LABEL_GLYPH_MARGIN_Y + 3
-      });
+  const placed = [];
+  for (const b of boundaryNodes) {
+    const meta = indexed.get(b.id);
+    if (!meta) continue;
+    const host = layoutChildrenById.get(meta.hostId);
+    if (!host) continue;
+    const { cx, cy, edge } = boundaryAttachPoint(nodeBox(host), b, meta.idxOnEdge);
+    const glyphLeft = cx - size.width / 2;
+    const glyphTop = cy - size.height / 2;
+    const glyphBottom = cy + size.height / 2;
+    placed.push({
+      id: b.id,
+      x: glyphLeft,
+      y: glyphTop,
+      width: size.width,
+      height: size.height,
+      data: b,
+      _edge: edge,
+      _labelAnchorX: glyphLeft - BOUNDARY_LABEL_GLYPH_MARGIN_X,
+      _labelAnchorY: edge === 'top'
+        ? glyphTop - BOUNDARY_LABEL_GLYPH_MARGIN_Y - 11
+        : glyphBottom + BOUNDARY_LABEL_GLYPH_MARGIN_Y + 3
     });
   }
   return placed;
@@ -190,9 +171,92 @@ function buildChainEdges(allEdges, chainEdgeIds, boundaryPositions, chainPositio
     .filter(Boolean);
 }
 
+// Rewrites the geometry of every gateway-out edge so the BPMN port convention
+// (main → right, others → top/bottom) holds in the ELK path too. ELK by
+// default routes all fan-out branches off the source's right face — fine for
+// general orthogonal layout, but it means a 3-way exclusive split looks like
+// a fan radiating from one vertex, which obscures which branch is the
+// continuing flow. We apply the shared classifyGatewayBranches rule and
+// rewrite the path: keep ELK's endPoint where the target sits, but replace
+// the start + bend list with a clean orthogonal route from the chosen face.
+function rerouteElkGatewayBranches(shiftedEdges, shiftedNodes) {
+  const byId = new Map(shiftedNodes.map(n => [n.id, n]));
+  const outBySource = new Map();
+  for (const e of shiftedEdges) {
+    // Loop edges are routed by routeElkLoopEdges and shouldn't be reclassified.
+    if (e.data?._isLoop) continue;
+    const sId = e.data?.source;
+    if (!sId) continue;
+    if (!outBySource.has(sId)) outBySource.set(sId, []);
+    outBySource.get(sId).push(e);
+  }
+  for (const [sId, outs] of outBySource) {
+    const s = byId.get(sId);
+    if (!s || s.data?.type !== 'gateway' || outs.length < 2) continue;
+    const sCx = s.x + s.width / 2;
+    const sCy = s.y + s.height / 2;
+    const branches = outs.map(e => ({
+      id: e.id,
+      data: e.data,
+      targetCenterY: e.sections?.[0]?.endPoint?.y ?? sCy
+    }));
+    const portByBranch = classifyGatewayBranches(branches, sCy);
+    for (const e of outs) {
+      const port = portByBranch.get(e.id);
+      const sec = e.sections?.[0];
+      if (!sec || port === 'right') continue;
+      const tx = sec.endPoint.x;
+      const ty = sec.endPoint.y;
+      const startY = port === 'top' ? s.y : s.y + s.height;
+      sec.startPoint = { x: sCx, y: startY };
+      // Orthogonal route: drop/rise to the target's row, then over to target.
+      // If column-aligned, no horizontal segment is needed.
+      sec.bendPoints = Math.abs(sCx - tx) < 4 ? [] : [{ x: sCx, y: ty }];
+    }
+  }
+}
+
+// Route loops as U-shapes BELOW the main DAG layout. Each loop exits the
+// source's bottom face and enters the target's bottom face, with a horizontal
+// trunk in the band between the layout's bottom edge and the bottom padding.
+// Multiple loops stagger their trunk Y so they don't overlap.
+//
+// Operates on POST-shift, post-bounds-known coordinates: every node already
+// has its final (x,y) in the rendered scene, and `loopBandY` is the y of the
+// first trunk; subsequent loops drop by `loopBandStep`.
+function routeElkLoopEdges(loopEdges, allRenderedNodes, loopBandY, loopBandStep = 16) {
+  const byId = new Map(allRenderedNodes.map(n => [n.id, n]));
+  return loopEdges.map((edge, i) => {
+    const s = byId.get(edge.source);
+    const t = byId.get(edge.target);
+    if (!s || !t) return null;
+    const sCx = s.x + s.width / 2;
+    const tCx = t.x + t.width / 2;
+    const trunkY = loopBandY + i * loopBandStep;
+    return {
+      id: edge.id,
+      sections: [{
+        startPoint: { x: sCx, y: s.y + s.height },
+        bendPoints: [
+          { x: sCx, y: trunkY },
+          { x: tCx, y: trunkY }
+        ],
+        endPoint: { x: tCx, y: t.y + t.height }
+      }],
+      data: { ...edge, _isLoop: true }
+    };
+  }).filter(Boolean);
+}
+
 export async function renderElkSvg(ir, options = {}) {
   const elk = new ELK();
-  const graph = irToElkGraph(ir, options);
+  // Loop edges are excluded from ELK so it sees a clean DAG. The shared
+  // detector catches both `branch_type='loop'` and any unmarked back-edge.
+  const allEdges = ir.process?.edges || [];
+  const loopEdgeIds = detectLoopEdges(ir);
+  const dagEdges = allEdges.filter(e => !loopEdgeIds.has(e.id));
+  const dagIr = { ...ir, process: { ...ir.process, edges: dagEdges } };
+  const graph = irToElkGraph(dagIr, options);
   const layout = await elk.layout(graph);
 
   const layoutChildren = layout.children || [];
@@ -200,7 +264,7 @@ export async function renderElkSvg(ir, options = {}) {
   const layoutChildrenById = new Map(layoutChildren.map(c => [c.id, c]));
 
   const allNodes = ir.process?.nodes || [];
-  const allEdges = ir.process?.edges || [];
+  const loopEdges = allEdges.filter(e => loopEdgeIds.has(e.id));
   const boundaryNodes = allNodes.filter(n => n.subtype === 'boundary' && n.attachedTo);
   const placedBoundaries = placeBoundaries(boundaryNodes, layoutChildrenById);
   const boundaryPositions = new Map(placedBoundaries.map(b => [b.id, b]));
@@ -250,10 +314,38 @@ export async function renderElkSvg(ir, options = {}) {
   const shiftedNodes = allRenderedNodes.map(shift);
   const shiftedEdges = allRenderedEdges.map(shiftEdge);
 
-  const maxX = Math.max(...shiftedNodes.map(n => n.x + n.width)) + padX;
-  const maxY = Math.max(...shiftedNodes.map(n =>
+  // Loop edges route as U-shapes through a band BELOW the rendered DAG.
+  // Compute the band's top Y from the lowest non-chain node bottom.
+  const layoutMaxY = Math.max(0, ...shiftedNodes.map(n =>
     n._chainDirection === 'below' ? n.y + n.height + labelHeadroom : n.y + n.height
-  )) + padY;
+  ));
+  const loopBandTop = layoutMaxY + 24;
+  const loopBandStep = 16;
+  const routedLoopEdges = routeElkLoopEdges(loopEdges, shiftedNodes, loopBandTop, loopBandStep);
+
+  const allShiftedEdges = [...shiftedEdges, ...routedLoopEdges];
+
+  // BPMN port convention: rewrite gateway-out edges so main exits right and
+  // every other branch exits top or bottom. Runs BEFORE enforceDistinctEndpoints
+  // so its retro-distribution sees the post-reroute geometry.
+  rerouteElkGatewayBranches(allShiftedEdges, shiftedNodes);
+
+  // IRON RULE: no two connectors may share an attach point on a node.
+  // Distribute endpoints across each node face, then assert no overlaps remain.
+  enforceDistinctEndpoints(allShiftedEdges, shiftedNodes);
+  const overlaps = findOverlappingEndpoints(allShiftedEdges, shiftedNodes);
+  if (overlaps.length > 0) {
+    throw new Error(
+      `Render invariant violated: ${overlaps.length} connector endpoint(s) overlap. ` +
+      `Sample: ${JSON.stringify(overlaps[0])}`
+    );
+  }
+
+  const maxX = Math.max(...shiftedNodes.map(n => n.x + n.width)) + padX;
+  const loopBandBottom = routedLoopEdges.length > 0
+    ? loopBandTop + (routedLoopEdges.length - 1) * loopBandStep + 16
+    : 0;
+  const maxY = Math.max(layoutMaxY, loopBandBottom) + padY;
 
   // Label position rules:
   //   - Boundary events label to the LEFT — keeps the column clear so the
@@ -263,7 +355,7 @@ export async function renderElkSvg(ir, options = {}) {
   //     label clears the host rectangle entirely.
   //   - Boundary handler chain nodes label OUTWARD — above for an upward
   //     chain, below (the default) for a downward chain.
-  const body = `${shiftedEdges.map(drawEdge).join('\n')}
+  const body = `${allShiftedEdges.map(drawEdge).join('\n')}
 ${shiftedNodes.map(n => {
   let labelPosition;
   if (n._edge === 'top' || n._edge === 'bottom') labelPosition = 'left';

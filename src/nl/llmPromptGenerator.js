@@ -180,20 +180,10 @@ export async function generateIrFromPromptLlm(prompt, options = {}) {
 
   const client = new Anthropic();
   const model = options.model || process.env.ANTHROPIC_MODEL || DEFAULT_MODEL;
-  // Default 0.3: a hair of randomness so a re-run of an imprecise prompt can
-  // escape a poor first interpretation, while staying close enough to
-  // deterministic that most runs of the same prompt produce near-identical
-  // IR. The schema constraints + worked examples in the system prompt keep
-  // the output well-formed even with this much wiggle room. Pass
-  // `--temperature 0` for byte-stable reproducibility (e.g. when re-rendering
-  // an approved textbook diagram); pass higher (≤0.7) when exploring
-  // alternative phrasings.
-  const temperature = options.temperature !== undefined ? options.temperature : 0.3;
 
   const response = await client.messages.create({
     model,
     max_tokens: 8192,
-    temperature,
     thinking: { type: 'disabled' },
     output_config: {
       effort: 'low',

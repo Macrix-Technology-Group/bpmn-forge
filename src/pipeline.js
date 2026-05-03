@@ -4,7 +4,7 @@ import { normalizeIr } from './normalizer.js';
 import { validateIr } from './validator.js';
 import { semanticDiff } from './semanticDiff.js';
 import { coverage, confidence } from './coverage.js';
-import { renderSvg } from './svgRenderer.js';
+import { renderUnifiedSvg } from './unifiedRenderer.js';
 export function verifyIr(ir, options = {}) {
   const normalized = normalizeIr(ir);
   const exported = exportBpmnXml(normalized);
@@ -16,8 +16,9 @@ export function verifyIr(ir, options = {}) {
   const report = { pass: validation1.ok && validation2.ok && diffs.length===0 && (!options.strict || cov.total===1), strict:Boolean(options.strict), coverage:cov, confidence:conf, diffCount:diffs.length, diffs, validation1, validation2 };
   return { normalized, exported, reimported, report };
 }
-export function runVerifiedRender(xml, options = {}) {
+export async function runVerifiedRender(xml, options = {}) {
   const imported = importBpmnXml(xml);
   const result = verifyIr(imported, options);
-  return { imported, ...result, svg: renderSvg(result.normalized, result.report) };
+  const rendered = await renderUnifiedSvg(result.normalized, options);
+  return { imported, ...result, svg: rendered.svg, renderMode: rendered.mode };
 }

@@ -2,6 +2,11 @@ import ELK from 'elkjs/lib/elk.bundled.js';
 import { irToElkGraph } from './irToElkGraph.js';
 import { renderElkSvg } from './elkSvgRenderer.js';
 import { esc, drawNodeAt, drawEdge, drawMessageFlow, drawDataObject, drawDataAssociation, drawGroupBox, svgDocument, DATA_OBJECT_WIDTH, DATA_OBJECT_HEIGHT, GROUP_PADDING } from './svgPrimitives.js';
+import { enforceDistinctEndpoints, findOverlappingEndpoints } from './distinctEndpoints.js';
+import { detectLoopEdges } from './loopDetection.js';
+import { classifyGatewayBranches } from './gatewayPorts.js';
+import { boundaryAttachPoint, indexBoundariesByEdge } from './boundaryPlacement.js';
+import { nodeBox } from './nodeGeometry.js';
 
 const LANE_STYLES = `.lane-label{font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;text-anchor:middle;fill:#444}
 .blackbox-label{font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;text-anchor:middle;fill:#444}`;
@@ -253,32 +258,34 @@ function buildPositionedNodes(elkChildren, placement, stackByLane, columnMaxWidt
       laneIdx, colIdx, rowInLane
     });
   }
-  // Place boundary events on the host's bottom-right corner.
-  // Multiple boundary events on the same host stagger leftward along the bottom edge.
-  const boundaryCountByHost = new Map();
+  // Boundary placement uses the shared BPMN convention from boundaryPlacement.js:
+  // interrupting boundaries on the host's bottom edge, non-interrupting on the
+  // top edge, staggered from center. Same rule the ELK renderer applies.
+  const indexed = indexBoundariesByEdge(boundaryDeferred.map(n => n.data));
   for (const n of boundaryDeferred) {
     const host = result.get(n.data.attachedTo);
     if (!host) continue;
-    const idx = boundaryCountByHost.get(n.data.attachedTo) || 0;
-    boundaryCountByHost.set(n.data.attachedTo, idx + 1);
-    const offsetFromRight = 22 + idx * 32;
-    const x = host.absX + host.width - offsetFromRight - n.width / 2;
-    const y = host.absY + host.height - n.height / 2;
+    const meta = indexed.get(n.id);
+    if (!meta) continue;
+    const hostBox = { x: host.absX, y: host.absY, width: host.width, height: host.height };
+    const { cx, cy, edge } = boundaryAttachPoint(hostBox, n.data, meta.idxOnEdge);
     result.set(n.id, {
-      id: n.id, absX: x, absY: y,
+      id: n.id,
+      absX: cx - n.width / 2,
+      absY: cy - n.height / 2,
       width: n.width, height: n.height, data: n.data,
       laneIdx: host.laneIdx, colIdx: host.colIdx, rowInLane: host.rowInLane,
-      isBoundary: true
+      isBoundary: true,
+      _edge: edge
     });
   }
   return { positioned: result, laneHeights, contentRight };
 }
 
-// Assign exit ports for gateway fan-out edges following BPMN convention:
-//   - Default / branch_type=main → right side  (main / continuing flow)
-//   - Branches with target below the gateway → bottom side
-//   - Branches with target above the gateway → top side
-// Non-gateway sources, or single-fan sources, always exit right.
+// Wraps the shared classifyGatewayBranches rule for the swimlane renderer's
+// edge shape (edges carry `sources`/`targets` arrays plus `data`). Non-gateway
+// sources and single-fan sources always exit right — that's renderer-policy,
+// not part of the shared rule.
 function assignSourcePorts(edges, positioned) {
   const outBySource = new Map();
   for (const e of edges) {
@@ -295,26 +302,16 @@ function assignSourcePorts(edges, positioned) {
       continue;
     }
     const sy = s.absY + s.height / 2;
-    const ranked = [...outs].sort((a, b) => {
-      const aMain = (a.data?.isDefault || a.data?.branch_type === 'main') ? 0 : 1;
-      const bMain = (b.data?.isDefault || b.data?.branch_type === 'main') ? 0 : 1;
-      return aMain - bMain;
-    });
-    let mainAssigned = false;
-    for (const e of ranked) {
+    const branches = outs.map(e => {
       const t = positioned.get(e.targets?.[0] || e.target);
-      const ty = t ? t.absY + t.height / 2 : sy;
-      if (!mainAssigned) {
-        portByEdge.set(e.id, 'right');
-        mainAssigned = true;
-      } else if (ty < sy - 8) {
-        portByEdge.set(e.id, 'top');
-      } else if (ty > sy + 8) {
-        portByEdge.set(e.id, 'bottom');
-      } else {
-        portByEdge.set(e.id, 'right');
-      }
-    }
+      return {
+        id: e.id,
+        data: e.data,
+        targetCenterY: t ? t.absY + t.height / 2 : sy
+      };
+    });
+    const portByBranch = classifyGatewayBranches(branches, sy);
+    for (const [id, port] of portByBranch) portByEdge.set(id, port);
   }
   return portByEdge;
 }
@@ -661,45 +658,12 @@ export async function renderSwimlaneSvg(ir) {
 
   const { lanes, nodeToLaneIdx, participantRanges, blackBoxPools, hasMultiplePools } = buildLaneIndex(ir);
 
-  // Loop edges are excluded from ELK's input so it sees a DAG and can lay it out cleanly.
-  // We route loop edges separately as backwards U-shapes after the main layout.
-  //
-  // Auto-detect: any edge whose target is earlier in the topological order
-  // than its source is a back-edge — a loop, regardless of how the IR
-  // classified it. Catches LLMs that mark a feedback edge as `exception` or
-  // `alternative` instead of `loop`. Detection runs DFS from each start
-  // event; an edge that points to a node currently on the DFS stack is a
-  // back-edge.
+  // Loop edges are excluded from ELK's input so it sees a DAG and can lay it
+  // out cleanly. We route loop edges separately as backwards U-shapes after
+  // the main layout. Loop detection lives in ./loopDetection.js so the rule
+  // is shared across renderers.
   const allEdges = ir.process?.edges || [];
-  const declaredLoops = new Set(allEdges.filter(e => e.branch_type === 'loop').map(e => e.id));
-  const allNodes = ir.process?.nodes || [];
-  const succ = new Map();
-  for (const n of allNodes) succ.set(n.id, []);
-  for (const e of allEdges) {
-    if (declaredLoops.has(e.id)) continue;
-    succ.get(e.source)?.push(e);
-  }
-  const visited = new Set();
-  const onStack = new Set();
-  const detectedBackEdges = new Set();
-  function dfs(id) {
-    if (visited.has(id)) return;
-    onStack.add(id);
-    for (const e of succ.get(id) || []) {
-      if (onStack.has(e.target)) {
-        detectedBackEdges.add(e.id);
-      } else if (!visited.has(e.target)) {
-        dfs(e.target);
-      }
-    }
-    onStack.delete(id);
-    visited.add(id);
-  }
-  for (const n of allNodes) {
-    if (n.subtype === 'start') dfs(n.id);
-  }
-  for (const n of allNodes) if (!visited.has(n.id)) dfs(n.id);
-  const loopEdgeIds = new Set([...declaredLoops, ...detectedBackEdges]);
+  const loopEdgeIds = detectLoopEdges(ir);
   const loopEdges = allEdges.filter(e => loopEdgeIds.has(e.id));
   const dagEdges = allEdges.filter(e => !loopEdgeIds.has(e.id));
   const dagIr = { ...ir, process: { ...ir.process, edges: dagEdges } };
@@ -768,7 +732,6 @@ export async function renderSwimlaneSvg(ir) {
     ? participantRanges.map(p => drawPoolBorder(p, totalWidth, laneHeights)).join('\n')
     : '';
   const routedLoopEdges = routeLoopEdges(loopEdges, positioned, laneHeights, lanes.length);
-  const edgeSvg = [...routedEdges, ...routedLoopEdges].map(drawEdge).join('\n');
 
   // Message flow source/target may be a NODE id or a PARTICIPANT id (when the
   // other end is a black-box pool). Resolve both kinds before routing.
@@ -782,6 +745,29 @@ export async function renderSwimlaneSvg(ir) {
     gapZones.push({ yStart: TOP_PAD + lanesHeight, yEnd: TOP_PAD + lanesHeight + BLACKBOX_GAP });
   }
   const routedMessageFlows = routeMessageFlows(ir.process.message_flows, positionedForMf, gapZones);
+
+  // IRON RULE: no two connectors may share an attach point on a node. Run a
+  // single distribution pass over EVERY incident connector (sequence flows,
+  // loops, message flows) so per-face buckets see the full set and spread
+  // them along the face. Black-box pool positions are included so message
+  // flows entering a pool are also distinguished. Then assert the invariant —
+  // any remaining duplicate is a render bug, not a warning.
+  enforceDistinctEndpoints(
+    [...routedEdges, ...routedLoopEdges, ...routedMessageFlows],
+    positionedForMf
+  );
+  const overlaps = findOverlappingEndpoints(
+    [...routedEdges, ...routedLoopEdges, ...routedMessageFlows],
+    positionedForMf
+  );
+  if (overlaps.length > 0) {
+    throw new Error(
+      `Render invariant violated: ${overlaps.length} connector endpoint(s) overlap. ` +
+      `Sample: ${JSON.stringify(overlaps[0])}`
+    );
+  }
+
+  const edgeSvg = [...routedEdges, ...routedLoopEdges].map(drawEdge).join('\n');
   const messageFlowSvg = routedMessageFlows.map(drawMessageFlow).join('\n');
 
   // Track which faces of each node are USED by connectors. The label can

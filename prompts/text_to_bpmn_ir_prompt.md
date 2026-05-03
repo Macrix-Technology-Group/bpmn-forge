@@ -206,6 +206,22 @@ If you cannot decide, do not emit `participants` — render flat instead.
 - When `participants` is emitted, every node id must appear in exactly one lane's `nodeRefs`.
 - Never invent end events for branches the description does not describe — only emit termination ends for paths the description explicitly leads to.
 
+### No implicit forks or merges (iron rule)
+
+Sequence-flow fan-out and fan-in must always go through an explicit **gateway**. The execution semantics of a process where a task or event has more than one inbound or outbound sequence flow are ambiguous in BPMN, so:
+
+- Every **task**, **subprocess**, **start event**, **end event**, and **intermediate event** has **at most ONE outgoing sequence flow** and **at most ONE incoming sequence flow**. (Boundary events are the only exception: they have one outgoing flow and zero incoming flows by construction.)
+- **Gateways are the only nodes** allowed to have more than one outgoing sequence flow (a *split*) or more than one incoming sequence flow (a *merge*).
+- If the description implies a task feeds two different downstream activities, insert a gateway between them: parallel gateway if both always run, exclusive gateway if it's a choice, inclusive gateway if any subset can run.
+- If the description implies two upstream paths land on the same task, insert a converging gateway: parallel gateway to synchronize (wait for all), exclusive gateway to merge (any one passes through).
+- Loop-back edges (`branch_type: "loop"`) likewise target a gateway, never a task directly. The classic shape is `task → gateway → (main forward / loop back to a prior gateway)`.
+
+Self-check before emitting: for every node where `type !== "gateway"` and `subtype !== "boundary"`, count its inbound and outbound sequence flows. Each count must be 0 or 1. If any count is ≥2, you have an implicit fork/merge — insert a gateway and re-route.
+
+### Don't invent edges between unrelated activities
+
+Only emit a sequence flow when the description explicitly orders one activity after another (or implies it via causal language: "after", "then", "once X completes", "if X then Y"). Do not connect activities just because they share a topic or actor — unrelated work in the same lane stays in the same lane but is not connected by sequence flow.
+
 ## Naming conventions (deterministic)
 
 - Process `id` — snake_case derived from the dominant noun phrase of the description. If the description names a domain object ("Mission", "Order"), use that as the root.
@@ -388,3 +404,4 @@ If you cannot decide, do not emit `participants` — render flat instead.
 - When the description involves an explicit *commit / approve / accept* action, always add the inverse `exception` branch.
 - Emit `participants` only when ≥2 distinct actors actively perform steps.
 - Emit `message_flows` whenever a throw/catch (or send/receive) pair crosses a lane boundary.
+- **Iron rule on fan-out / fan-in:** non-gateway nodes (tasks, subprocesses, events) have at most one inbound and one outbound sequence flow. Always route splits and merges through a gateway. If you find yourself drawing two arrows out of a task or two arrows into a task, stop and insert a gateway.

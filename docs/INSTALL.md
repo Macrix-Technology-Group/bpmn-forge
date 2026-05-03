@@ -122,7 +122,7 @@ fs.writeFileSync('process.svg', svg);
 console.log(`rendered (${mode}) → process.svg`);
 
 // Or: full XML → verified SVG in one call
-const result = runVerifiedRender(xml);
+const result = await runVerifiedRender(xml);
 console.log('roundtrip pass:', result.report.pass);
 ```
 
@@ -168,7 +168,7 @@ These named exports are stable and safe to import from the package root:
 |---|---|
 | **BPMN XML I/O** | `importBpmnXml`, `exportBpmnXml`, `exportBpmnXmlWithDi`, `importExtendedBpmnXml`, `importUnifiedBpmnXml` |
 | **IR shaping & validation** | `normalizeIr`, `validateIr`, `semanticDiff`, `coverage`, `confidence` |
-| **Rendering** | `renderSvg`, `renderElkSvg`, `renderSwimlaneSvg`, `renderUnifiedSvg` |
+| **Rendering** | `renderElkSvg`, `renderSwimlaneSvg`, `renderUnifiedSvg` |
 | **Verification pipeline** | `verifyIr`, `runVerifiedRender` |
 | **Text → IR** | `textToIr`, `textToIrWithLlm` |
 | **Execution exporters** | `buildExecutionManifest`, `irToElsaWorkflow` |

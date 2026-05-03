@@ -224,8 +224,6 @@ export function confidence(coverage: CoverageReport, warnings?: string[]): numbe
 
 // ─── Rendering ────────────────────────────────────────────────────────────
 
-export function renderSvg(ir: BpmnIr, report?: Record<string, unknown>): string;
-
 export interface RenderOptions {
   [key: string]: unknown;
 }
@@ -278,11 +276,13 @@ export function verifyIr(ir: BpmnIr, options?: VerifyOptions): VerifyResult;
 export interface VerifiedRenderResult extends VerifyResult {
   imported: BpmnIr;
   svg: string;
+  renderMode: 'elk' | 'swimlanes';
 }
+export interface VerifiedRenderOptions extends VerifyOptions, UnifiedRenderOptions {}
 export function runVerifiedRender(
   xml: string,
-  options?: VerifyOptions
-): VerifiedRenderResult;
+  options?: VerifiedRenderOptions
+): Promise<VerifiedRenderResult>;
 
 // ─── Text → IR ────────────────────────────────────────────────────────────
 

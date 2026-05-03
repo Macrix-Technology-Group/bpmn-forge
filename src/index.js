@@ -18,7 +18,6 @@ export { semanticDiff } from './semanticDiff.js';
 export { coverage, confidence } from './coverage.js';
 
 // ── Rendering ─────────────────────────────────────────────────────────────
-export { renderSvg } from './svgRenderer.js';
 export { renderElkSvg } from './elkSvgRenderer.js';
 export { renderSwimlaneSvg } from './swimlaneSvgRenderer.js';
 export { renderUnifiedSvg } from './unifiedRenderer.js';

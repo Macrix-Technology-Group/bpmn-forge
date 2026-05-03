@@ -43,10 +43,11 @@ describe('end-to-end happy path: inbound_we.bpmn', () => {
     expect(consumed.length).toBeGreaterThan(0);
   });
 
-  it('renders verified SVG from BPMN XML', () => {
-    const result = runVerifiedRender(xml);
+  it('renders verified SVG from BPMN XML', async () => {
+    const result = await runVerifiedRender(xml);
     expect(result.svg).toMatch(/^<\?xml/);
     expect(result.svg.length).toBeGreaterThan(100);
     expect(result.report.validation1.ok).toBe(true);
+    expect(['elk', 'swimlanes']).toContain(result.renderMode);
   });
 });
