@@ -243,6 +243,49 @@ describe('distinctEndpoints invariant', () => {
     expect(e1mid[0].y).not.toBe(e2mid[0].y);
   });
 
+  // First/last segments (anchored to a node face) must also be staggered when
+  // they collide. Reproduces the "Tier 2 task horizontally aligned with the
+  // end event" case: Tier 2's first segment runs at y=DA.cy toward its real
+  // target, while Pull Back's last segment also runs at y=DA.cy ending at DA.
+  // Both sit at the same y with overlapping x, but neither is a middle
+  // segment — earlier the staggerer skipped both and they merged visually.
+  it('staggerOverlappingTrunks shifts first/last segments when their anchor is on a task face', async () => {
+    const { staggerOverlappingTrunks } = await import('../../src/staggerTrunks.js');
+    const nodes = [
+      { id: 'tier2', x: 50, y: 100, width: 250, height: 100, data: { type: 'task' } },
+      { id: 'da',    x: 577, y: 127, width: 46, height: 46, data: { type: 'event' } },
+      { id: 'pi',    x: 700, y: 300, width: 250, height: 100, data: { type: 'task' } },
+      { id: 'pull',  x: 50, y: 300, width: 250, height: 100, data: { type: 'task' } }
+    ];
+    const tier2Path = {
+      data: { source: 'tier2', target: 'pi' },
+      sections: [{
+        startPoint: { x: 300, y: 150 },
+        bendPoints: [{ x: 540, y: 150 }, { x: 540, y: 350 }],
+        endPoint: { x: 700, y: 350 }
+      }]
+    };
+    const pullBackPath = {
+      data: { source: 'pull', target: 'da' },
+      sections: [{
+        startPoint: { x: 300, y: 350 },
+        bendPoints: [{ x: 440, y: 350 }, { x: 440, y: 150 }],
+        endPoint: { x: 577, y: 150 }
+      }]
+    };
+    staggerOverlappingTrunks([tier2Path, pullBackPath], nodes);
+    // Pull Back's last segment is event-anchored (ends at DA), so it must
+    // stay at y=150 — events can't tolerate face-tangent shifts.
+    expect(pullBackPath.sections[0].endPoint.y).toBe(150);
+    expect(pullBackPath.sections[0].bendPoints[1].y).toBe(150);
+    // Tier 2's first segment must move OFF y=150 so the two no longer share
+    // a visual track.
+    expect(tier2Path.sections[0].startPoint.y).not.toBe(150);
+    expect(tier2Path.sections[0].bendPoints[0].y).not.toBe(150);
+    // The shifted first segment must remain horizontal (start.y === bend1.y).
+    expect(tier2Path.sections[0].startPoint.y).toBe(tier2Path.sections[0].bendPoints[0].y);
+  });
+
   it('staggerOverlappingTrunks leaves non-overlapping segments untouched', async () => {
     const { staggerOverlappingTrunks } = await import('../../src/staggerTrunks.js');
     // Two horizontal middle segments at same y but DISJOINT x ranges.

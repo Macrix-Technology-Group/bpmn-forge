@@ -373,7 +373,7 @@ export async function renderElkSvg(ir, options = {}) {
 
   // Stagger collinear overlapping trunks so two flows sharing a horizontal
   // (or vertical) segment render as two visibly separate lines, never one.
-  staggerOverlappingTrunks(allShiftedEdges);
+  staggerOverlappingTrunks(allShiftedEdges, shiftedNodes);
 
   const maxX = Math.max(...shiftedNodes.map(n => n.x + n.width)) + padX;
   const loopBandBottom = routedLoopEdges.length > 0

@@ -824,7 +824,8 @@ export async function renderSwimlaneSvg(ir) {
   // staggered perpendicular to the segment so each one renders on its own
   // track. Loop edges already self-stagger by index, so they're skipped.
   staggerOverlappingTrunks(
-    [...routedEdges, ...routedLoopEdges, ...routedMessageFlows]
+    [...routedEdges, ...routedLoopEdges, ...routedMessageFlows],
+    positionedForMf
   );
 
   // Edge labels must clear EVERY node glyph AND every already-placed edge
