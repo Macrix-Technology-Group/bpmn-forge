@@ -478,7 +478,12 @@ export function drawEdge(edge) {
   const d = 'M' + points.map(p => `${Math.round(p.x)},${Math.round(p.y)}`).join(' L');
   const data = edge.data || {};
   const dash = data.branch_type === 'exception' ? ' stroke-dasharray="6,4"' : '';
-  const label = placeEdgeLabel(data, points);
+  // The renderer can pre-place the label and attach it as `edge._label` —
+  // useful when label positioning needs to consider already-placed labels
+  // as obstacles (so two condition labels on a multi-branch gateway don't
+  // collide). Falls back to standalone placement when no _label is attached.
+  const labelInput = edge._obstacles ? { ...data, _obstacles: edge._obstacles } : data;
+  const label = edge._label || placeEdgeLabel(labelInput, points);
   const labelSvg = label ? `<g>
 <rect x="${label.x - label.backgroundWidth/2}" y="${label.y - 14}" width="${label.backgroundWidth}" height="${label.backgroundHeight}" rx="3" fill="white" stroke="#bbb" opacity="0.96"/>
 <text x="${label.x}" y="${label.y}" class="edge-label">${esc(label.text)}</text>

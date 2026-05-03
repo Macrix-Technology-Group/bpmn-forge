@@ -4,6 +4,8 @@ import { drawNodeAt, drawEdge, svgDocument } from './svgPrimitives.js';
 import { enforceDistinctEndpoints, findOverlappingEndpoints } from './distinctEndpoints.js';
 import { detectLoopEdges } from './loopDetection.js';
 import { classifyGatewayBranches } from './gatewayPorts.js';
+import { placeEdgeLabel } from './labelEngine.js';
+import { insetEventEndpoints } from './eventEndpointInset.js';
 import { boundaryAttachPoint, indexBoundariesByEdge } from './boundaryPlacement.js';
 import { nodeBox } from './nodeGeometry.js';
 
@@ -325,6 +327,29 @@ export async function renderElkSvg(ir, options = {}) {
 
   const allShiftedEdges = [...shiftedEdges, ...routedLoopEdges];
 
+  // Edge labels must clear every node glyph AND every already-placed edge
+  // label. Pre-place iteratively, longest-first, accumulating each placed
+  // label's rect as an obstacle for the next.
+  const labelObstacles = shiftedNodes.map(n => ({ x: n.x, y: n.y, w: n.width, h: n.height }));
+  const labellableEdges = allShiftedEdges.filter(e => e.data?.condition);
+  labellableEdges.sort((a, b) => (b.data.condition.length - a.data.condition.length));
+  const placedLabelRects = [];
+  for (const e of labellableEdges) {
+    e._obstacles = [...labelObstacles, ...placedLabelRects];
+    const sec = e.sections?.[0];
+    if (!sec) continue;
+    const pts = [sec.startPoint, ...(sec.bendPoints || []), sec.endPoint];
+    const label = placeEdgeLabel({ ...e.data, _obstacles: e._obstacles }, pts);
+    if (!label) continue;
+    e._label = label;
+    placedLabelRects.push({
+      x: label.x - label.backgroundWidth / 2,
+      y: label.y - 14,
+      w: label.backgroundWidth,
+      h: label.backgroundHeight
+    });
+  }
+
   // BPMN port convention: rewrite gateway-out edges so main exits right and
   // every other branch exits top or bottom. Runs BEFORE enforceDistinctEndpoints
   // so its retro-distribution sees the post-reroute geometry.
@@ -340,6 +365,10 @@ export async function renderElkSvg(ir, options = {}) {
       `Sample: ${JSON.stringify(overlaps[0])}`
     );
   }
+
+  // Event glyphs are inset 5 px inside their bbox; move endpoints touching
+  // events inward so the arrow tip lands on the visible circle perimeter.
+  insetEventEndpoints(allShiftedEdges, shiftedNodes);
 
   const maxX = Math.max(...shiftedNodes.map(n => n.x + n.width)) + padX;
   const loopBandBottom = routedLoopEdges.length > 0

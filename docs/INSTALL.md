@@ -11,17 +11,17 @@ This guide covers two install paths:
 
 ```bash
 # from npm (recommended)
-npm install @macrix-technology-group/bpmn-forge@0.3.2
+npm install @macrix-technology-group/bpmn-forge@0.3.3
 
 # from GitHub (pin to a release tag)
-npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.2"
+npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.3"
 ```
 
 ```ts
 import { importBpmnXml, renderUnifiedSvg } from '@macrix-technology-group/bpmn-forge';
 ```
 
-When pinning from GitHub, pin to a tag (`#0.3.2`) — never to `main` — so a future commit on `main` doesn't silently change your dependency.
+When pinning from GitHub, pin to a tag (`#0.3.3`) — never to `main` — so a future commit on `main` doesn't silently change your dependency.
 
 ---
 
@@ -63,10 +63,10 @@ Pick one of these patterns. The first is recommended.
 ### A. Pin to a release tag (recommended)
 
 ```bash
-npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.2"
+npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.3"
 ```
 
-`#0.3.2` is the git ref to check out. Released tags are listed at <https://github.com/Macrix-Technology-Group/bpmn-forge/tags>.
+`#0.3.3` is the git ref to check out. Released tags are listed at <https://github.com/Macrix-Technology-Group/bpmn-forge/tags>.
 
 This is **reproducible**: re-running `npm install` always pulls the same code.
 
@@ -186,6 +186,18 @@ These named exports are stable and safe to import from the package root:
 
 ## 5. Updating to a new version
 
+### Migrating to 0.3.3 (label, gateway, and approach-angle hardening)
+
+If you're upgrading from 0.3.2:
+
+- **Edge labels are pre-placed iteratively, longest-first**, with each placed label's rect added to the next label's obstacle list. So two condition labels on a multi-branch gateway no longer stack on top of each other.
+- **Edge labels never overlap node glyphs.** When no in-line position on any segment is clear, a vertical-offset escape pushes the label off the segment until clear.
+- **Connectors meeting events land on the visible circle perimeter**, not 5 px past the bbox edge (was a "loose end" visual bug on every event).
+- **A non-default gateway branch with a same-row target bypasses the diamond body** — drops below (or rises above) the gateway, traverses, and approaches the target's bottom (or top) face going perpendicular UP (or DOWN). No more arrows visibly exiting the right vertex when the geometry says they exit the bottom.
+- **`enforceDistinctEndpoints` now respects existing alignments.** If endpoints on a face are already ≥ 16 px apart, the rule does nothing — message flows aligned to a black-box pool's sender are no longer clobbered into doglegs.
+- **CLI repair round-trip.** `npm run nl:generate -- --mode llm` now retries once on validator failure (previously only the public `textToIrWithLlm` API did this).
+- **Tightened prompt rules.** "Status transitions are their own service tasks" only fires on real state machines (named prior + new state, or "moves from X to Y" language) — no more `Set Status: Green Cleared` synthesized from the word "clears". End events are placed in the lane of their immediate predecessor, not the lane of the actor "whose process is ending."
+
 ### Migrating to 0.3.2 (boundary outflow direction)
 
 If you're upgrading from 0.3.1:
@@ -223,7 +235,7 @@ Bump the tag in your `package.json` `dependencies`, then reinstall:
 {
   "dependencies": {
     "@macrix-technology-group/bpmn-forge":
-      "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.2"
+      "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.3"
   }
 }
 ```
@@ -240,10 +252,10 @@ Commit the resulting `package-lock.json` change so collaborators pick up the sam
 
 ```bash
 # yarn
-yarn add "@macrix-technology-group/bpmn-forge@git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.2"
+yarn add "@macrix-technology-group/bpmn-forge@git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.3"
 
 # pnpm
-pnpm add "github:Macrix-Technology-Group/bpmn-forge#0.3.2"
+pnpm add "github:Macrix-Technology-Group/bpmn-forge#0.3.3"
 ```
 
 ---
@@ -257,7 +269,7 @@ If it becomes private, you have two options:
 ### Option A — SSH
 
 ```bash
-npm install "git+ssh://git@github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.2"
+npm install "git+ssh://git@github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.3"
 ```
 
 Requires your SSH key to be authorized on the org and `ssh-agent` running. CI runners need a deploy key.
@@ -267,7 +279,7 @@ Requires your SSH key to be authorized on the org and `ssh-agent` running. CI ru
 ```bash
 # locally
 git config --global url."https://YOUR_PAT@github.com/".insteadOf "https://github.com/"
-npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.2"
+npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.3"
 ```
 
 For CI, set `GITHUB_TOKEN` (or a fine-grained PAT with `Contents: read` on the repo) and use the same `insteadOf` trick in the workflow.
@@ -280,7 +292,7 @@ For CI, set `GITHUB_TOKEN` (or a fine-grained PAT with `Contents: read` on the r
 |---|---|
 | `Error [ERR_REQUIRE_ESM]: require() of ES Module …` | Your consumer is CommonJS. Either set `"type": "module"` in `package.json`, rename the importing file to `.mjs`, or use a dynamic `await import(...)`. |
 | `Cannot find package '@macrix-technology-group/bpmn-forge'` | The install probably failed silently. Re-run `npm install` and watch for git/network errors. |
-| `npm ERR! 404` on git URL | Check the spelling of the org/repo name and the tag (`#0.3.2`). Tags are at <https://github.com/Macrix-Technology-Group/bpmn-forge/tags>. |
+| `npm ERR! 404` on git URL | Check the spelling of the org/repo name and the tag (`#0.3.3`). Tags are at <https://github.com/Macrix-Technology-Group/bpmn-forge/tags>. |
 | `Permission denied (publickey)` | Repo flipped private and your SSH key isn't authorized. See [Private-repo auth](#private-repo-auth). |
 | `elkjs` errors at runtime in the browser | `bpmn-forge` is intended to run in **Node** (server-side / API routes / Node CLIs). Do not import it from a Vite/Next.js client component — call it from a route handler / server action and ship the resulting SVG to the client. |
 

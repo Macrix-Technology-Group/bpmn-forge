@@ -128,6 +128,316 @@ describe('distinctEndpoints invariant', () => {
     expect(svg.length).toBeGreaterThan(100);
   });
 
+  // Iron rule: a connector's last segment must approach the target node
+  // perpendicular to the face it lands on (90°), never parallel (0°). A
+  // parallel approach has the arrowhead grazing along the face — visually
+  // unreadable and ambiguous about which side the arrow lands on.
+  it('every connector approaches its target face perpendicular, never parallel', async () => {
+    const ir = {
+      process: {
+        id: 'p_perp', name: 'P',
+        nodes: [
+          { id: 's',  type: 'event',   subtype: 'start' },
+          { id: 'g',  type: 'gateway', subtype: 'exclusive', name: 'OK?' },
+          { id: 'a',  type: 'task',    subtype: 'service',   name: 'Approved Path' },
+          { id: 'r',  type: 'task',    subtype: 'service',   name: 'Rejected Path' },
+          { id: 'e',  type: 'event',   subtype: 'end' }
+        ],
+        edges: [
+          { id: 'e1', source: 's', target: 'g' },
+          { id: 'e2', source: 'g', target: 'a', condition: 'approved', isDefault: true },
+          { id: 'e3', source: 'g', target: 'r', condition: 'rejected', branch_type: 'exception' },
+          { id: 'e4', source: 'a', target: 'e' },
+          { id: 'e5', source: 'r', target: 'e' }
+        ],
+        participants: [{
+          id: 'p1', name: 'P', lanes: [{ id: 'l1', name: 'L1', nodeRefs: ['s', 'g', 'a', 'r', 'e'] }]
+        }]
+      }
+    };
+    const { renderSwimlaneSvg } = await import('../../src/swimlaneSvgRenderer.js');
+    const svg = await renderSwimlaneSvg(ir);
+    const tasks = [...svg.matchAll(/<rect x="(\d+)" y="(\d+)" width="210" height="90"/g)]
+      .map(m => ({ x: +m[1], y: +m[2], w: 210, h: 90 }));
+    const gws = [...svg.matchAll(/<polygon points="([\d.,]+) ([\d.,]+) ([\d.,]+) ([\d.,]+)"/g)]
+      .map(m => {
+        const pts = [m[1], m[2], m[3], m[4]].map(s => s.split(',').map(Number));
+        const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+        return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+      });
+    const evs = [...svg.matchAll(/<circle cx="(\d+)" cy="(\d+)" r="23"/g)]
+      .map(m => ({ x: +m[1] - 23, y: +m[2] - 23, w: 46, h: 46, cx: +m[1], cy: +m[2], event: true }));
+    const all = [...tasks, ...gws, ...evs];
+    const TOL = 6;
+    const detectFace = (pt) => {
+      for (const n of all) {
+        if (n.event) {
+          const d = Math.hypot(pt.x - n.cx, pt.y - n.cy);
+          if (Math.abs(d - 23) <= TOL) {
+            const dx = pt.x - n.cx, dy = pt.y - n.cy;
+            return Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
+          }
+          continue;
+        }
+        if (Math.abs(pt.x - n.x) <= TOL && pt.y >= n.y - TOL && pt.y <= n.y + n.h + TOL) return 'vertical';      // left
+        if (Math.abs(pt.x - (n.x + n.w)) <= TOL && pt.y >= n.y - TOL && pt.y <= n.y + n.h + TOL) return 'vertical'; // right
+        if (Math.abs(pt.y - n.y) <= TOL && pt.x >= n.x - TOL && pt.x <= n.x + n.w + TOL) return 'horizontal';   // top
+        if (Math.abs(pt.y - (n.y + n.h)) <= TOL && pt.x >= n.x - TOL && pt.x <= n.x + n.w + TOL) return 'horizontal'; // bottom
+      }
+      return null;
+    };
+    const paths = [...svg.matchAll(/<path[^>]*class="flow"[^>]*d="([^"]+)"/g)];
+    for (const m of paths) {
+      const pts = m[1].replace(/^M/, '').split(' L').map(p => {
+        const [x, y] = p.split(',').map(Number);
+        return { x, y };
+      });
+      if (pts.length < 2) continue;
+      const last = pts[pts.length - 1], prev = pts[pts.length - 2];
+      const segDir = Math.abs(last.x - prev.x) > Math.abs(last.y - prev.y) ? 'horizontal' : 'vertical';
+      const faceOrientation = detectFace(last);
+      if (!faceOrientation) continue;
+      // The last segment's direction must be PERPENDICULAR to the face's
+      // orientation: vertical face (left/right) needs a horizontal segment
+      // and vice versa.
+      const required = faceOrientation === 'vertical' ? 'horizontal' : 'vertical';
+      expect(
+        segDir,
+        `path ${m[1]} ends with ${segDir} segment on ${faceOrientation} face — parallel hit`
+      ).toBe(required);
+    }
+  });
+
+  // distinct-endpoints must not re-redistribute endpoints that are already
+  // sufficiently apart. A common case: two message flows touching a wide
+  // black-box pool — `routeMessageFlows` aligns each flow's pool endpoint
+  // to the OTHER end's x, producing two well-separated touchpoints. The
+  // distinct-endpoints rule only needs to kick in when endpoints overlap;
+  // otherwise it would clobber an intentional alignment and turn a clean
+  // vertical message flow into a 3-segment dogleg.
+  it('distinct-endpoints leaves already-distant endpoints alone', async () => {
+    const ir = {
+      process: {
+        id: 'p_mf', name: 'M',
+        nodes: [
+          { id: 's',  type: 'event', subtype: 'start',     name: 'Start',    event_definition: 'message' },
+          { id: 'a',  type: 'task',  subtype: 'service',   name: 'Process' },
+          { id: 'th', type: 'event', subtype: 'intermediate_throw', name: 'Send Confirmation', event_definition: 'message' },
+          { id: 'e',  type: 'event', subtype: 'end',       name: 'Done' }
+        ],
+        edges: [
+          { id: 'e1', source: 's',  target: 'a' },
+          { id: 'e2', source: 'a',  target: 'th' },
+          { id: 'e3', source: 'th', target: 'e' }
+        ],
+        participants: [
+          {
+            id: 'p_main', name: 'Main',
+            lanes: [{ id: 'l1', name: 'Worker', nodeRefs: ['s', 'a', 'th', 'e'] }]
+          },
+          {
+            id: 'p_external', name: 'Supplier Portal',
+            isBlackBox: true,
+            lanes: []
+          }
+        ],
+        message_flows: [
+          { id: 'mf_in',  source: 'p_external', target: 's',  name: 'Notify' },
+          { id: 'mf_out', source: 'th',         target: 'p_external', name: 'Confirm' }
+        ]
+      }
+    };
+    const { renderSwimlaneSvg } = await import('../../src/swimlaneSvgRenderer.js');
+    const svg = await renderSwimlaneSvg(ir);
+    const dashed = [...svg.matchAll(/<path d="([^"]+)" fill="none" stroke="#111" stroke-width="1.4" stroke-dasharray="6,4"/g)];
+    expect(dashed.length).toBe(2);
+    // Each message flow should be a STRAIGHT VERTICAL — exactly two points,
+    // sharing the same x. No spurious horizontal bend.
+    for (const m of dashed) {
+      const pts = m[1].replace(/^M/, '').split(' L').map(p => {
+        const [x, y] = p.split(',').map(Number);
+        return { x, y };
+      });
+      expect(pts.length, `flow ${m[1]} has ${pts.length} points`).toBe(2);
+      expect(pts[0].x, `flow ${m[1]} not vertical`).toBe(pts[1].x);
+    }
+  });
+
+  // Iron rule restated: a non-default gateway branch whose target sits at
+  // (or near) the gateway's row must NOT route a straight L through the
+  // diamond's body. The path must bypass the gateway — drop below (or rise
+  // above) for clearance before traversing toward the target.
+  it('non-default gateway branch with same-row target bypasses the diamond body', async () => {
+    const ir = {
+      process: {
+        id: 'p_bypass', name: 'B',
+        nodes: [
+          { id: 's',  type: 'event',   subtype: 'start' },
+          { id: 'g',  type: 'gateway', subtype: 'exclusive', name: 'OK?' },
+          { id: 'a',  type: 'task',    subtype: 'service',   name: 'Approved Path' },
+          { id: 'r',  type: 'task',    subtype: 'service',   name: 'Rejected Path' },
+          { id: 'e',  type: 'event',   subtype: 'end' }
+        ],
+        edges: [
+          { id: 'e1', source: 's', target: 'g' },
+          { id: 'e2', source: 'g', target: 'a', condition: 'approved', isDefault: true },
+          { id: 'e3', source: 'g', target: 'r', condition: 'rejected', branch_type: 'exception' },
+          { id: 'e4', source: 'a', target: 'e' },
+          { id: 'e5', source: 'r', target: 'e' }
+        ],
+        participants: [{
+          id: 'p1', name: 'P', lanes: [
+            { id: 'l1', name: 'L1', nodeRefs: ['s', 'g', 'a', 'r', 'e'] }
+          ]
+        }]
+      }
+    };
+    const { renderSwimlaneSvg } = await import('../../src/swimlaneSvgRenderer.js');
+    const svg = await renderSwimlaneSvg(ir);
+    // Locate gw_approved gateway by its label
+    const gws = [...svg.matchAll(/<polygon points="([\d.,]+) ([\d.,]+) ([\d.,]+) ([\d.,]+)"/g)]
+      .map(m => {
+        const pts = [m[1], m[2], m[3], m[4]].map(s => s.split(',').map(Number));
+        const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+        return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+      });
+    expect(gws.length).toBeGreaterThan(0);
+    const g = gws[0];
+    // Find every flow path. For each, check whether any segment passes
+    // *through* the gateway body — i.e. enters and exits its bbox while
+    // the segment isn't itself originating or terminating on the gateway's
+    // perimeter. A segment passes through if both its endpoints (or its
+    // axis with one inside) cross the bbox interior.
+    const paths = [...svg.matchAll(/<path class="flow" d="([^"]+)"/g)];
+    for (const m of paths) {
+      const pts = m[1].replace(/^M/, '').split(' L').map(p => {
+        const [x, y] = p.split(',').map(Number);
+        return { x, y };
+      });
+      for (let i = 0; i < pts.length - 1; i++) {
+        const a = pts[i], b = pts[i + 1];
+        // Vertical segment crossing gateway interior at an x INSIDE the bbox
+        // (not on the perimeter): both y's straddle the gateway's y range.
+        if (a.x === b.x && a.x > g.x + 2 && a.x < g.x + g.w - 2) {
+          const yMin = Math.min(a.y, b.y), yMax = Math.max(a.y, b.y);
+          // Segment passes through if it enters the gateway's vertical span
+          // from outside on both ends or stays inside the perimeter. Allow
+          // segments that end on the perimeter (one endpoint on the bbox
+          // border) — those are normal exit/entry segments.
+          const entersFromAbove = yMin < g.y - 1 && yMax > g.y + 1;
+          const entersFromBelow = yMin < g.y + g.h - 1 && yMax > g.y + g.h + 1;
+          expect(
+            entersFromAbove && entersFromBelow,
+            `segment from (${a.x},${a.y}) to (${b.x},${b.y}) passes through gateway body`
+          ).toBe(false);
+        }
+      }
+    }
+  });
+
+  // Edge endpoints touching an event node must land ON the visible circle
+  // perimeter — not on the bbox edge 5px outside it (which would leave a
+  // visible gap between the arrow tip and the glyph).
+  it('edge endpoints land on the event circle, not 5px past the bbox edge', async () => {
+    const ir = {
+      process: {
+        id: 'p_evt', name: 'E',
+        nodes: [
+          { id: 's', type: 'event', subtype: 'start' },
+          { id: 'a', type: 'task',  subtype: 'user', name: 'A' },
+          { id: 'e', type: 'event', subtype: 'end' }
+        ],
+        edges: [
+          { id: 'e1', source: 's', target: 'a' },
+          { id: 'e2', source: 'a', target: 'e' }
+        ]
+      }
+    };
+    const { renderElkSvg } = await import('../../src/elkSvgRenderer.js');
+    const svg = await renderElkSvg(ir);
+    const events = [...svg.matchAll(/<circle cx="(\d+)" cy="(\d+)" r="23"/g)]
+      .map(m => ({ cx: +m[1], cy: +m[2], r: 23 }));
+    const paths = [...svg.matchAll(/<path class="flow" d="([^"]+)"/g)];
+    expect(events.length).toBe(2);
+    expect(paths.length).toBeGreaterThan(0);
+    // Each path that touches an event must have an endpoint within r+1 of
+    // the circle center (i.e. on or just inside the perimeter, not 5px out).
+    for (const m of paths) {
+      const pts = m[1].replace(/^M/, '').split(' L').map(p => {
+        const [x, y] = p.split(',').map(Number);
+        return { x, y };
+      });
+      const ends = [pts[0], pts[pts.length - 1]];
+      for (const pt of ends) {
+        for (const ev of events) {
+          const d = Math.hypot(pt.x - ev.cx, pt.y - ev.cy);
+          // If this endpoint is anywhere near the event (within 30 px of
+          // its center), it must land within r+1 of the center — i.e. on
+          // the visible circle, not on the 5-px-larger bbox.
+          if (d < 30) {
+            expect(d, `endpoint (${pt.x},${pt.y}) is ${d.toFixed(1)} from event center but circle r=23`).toBeLessThanOrEqual(24);
+          }
+        }
+      }
+    }
+  });
+
+  // Edge labels must not overlap node glyphs that are NOT the edge's own
+  // source or target. The fixture is a 3-way gateway fan-out where one
+  // branch's L-route runs through the row of OTHER branches' targets — the
+  // label would land on a sibling task without obstacle-aware placement.
+  it('edge labels avoid overlapping unrelated node glyphs', async () => {
+    const ir = {
+      process: {
+        id: 'p_lbl', name: 'L',
+        nodes: [
+          { id: 's',  type: 'event',   subtype: 'start' },
+          { id: 'g',  type: 'gateway', subtype: 'exclusive', name: 'Q?' },
+          { id: 'a',  type: 'task',    subtype: 'service',   name: 'A' },
+          { id: 'b',  type: 'task',    subtype: 'service',   name: 'B' },
+          { id: 'c',  type: 'task',    subtype: 'service',   name: 'C' },
+          { id: 'e',  type: 'event',   subtype: 'end' }
+        ],
+        edges: [
+          { id: 'e1', source: 's', target: 'g' },
+          { id: 'e2', source: 'g', target: 'a', condition: 'aaa', isDefault: true },
+          { id: 'e3', source: 'g', target: 'b', condition: 'bbb path needs label space' },
+          { id: 'e4', source: 'g', target: 'c', condition: 'ccc path needs label space' },
+          { id: 'e5', source: 'a', target: 'e' },
+          { id: 'e6', source: 'b', target: 'e' },
+          { id: 'e7', source: 'c', target: 'e' }
+        ],
+        participants: [{
+          id: 'p1', name: 'P', lanes: [
+            { id: 'l1', name: 'L1', nodeRefs: ['s', 'g', 'a', 'b', 'c', 'e'] }
+          ]
+        }]
+      }
+    };
+    const { renderSwimlaneSvg } = await import('../../src/swimlaneSvgRenderer.js');
+    const svg = await renderSwimlaneSvg(ir);
+    const labels = [...svg.matchAll(/<rect x="([\d.-]+)" y="([\d.-]+)" width="([\d.-]+)" height="([\d.-]+)"[^>]*fill="white"[^>]*stroke="#bbb"[^>]*\/>\s*<text[^>]*>([^<]+)<\/text>/g)];
+    const tasks = [...svg.matchAll(/<rect x="(\d+)" y="(\d+)" width="210" height="90"/g)]
+      .map(m => ({ x: +m[1], y: +m[2], w: 210, h: 90 }));
+    const gws = [...svg.matchAll(/<polygon points="([\d.,]+) ([\d.,]+) ([\d.,]+) ([\d.,]+)" fill="white" stroke="#111" stroke-width="2.5"\/>/g)]
+      .map(m => {
+        const pts = [m[1], m[2], m[3], m[4]].map(s => s.split(',').map(Number));
+        const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+        return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+      });
+    // For each label that has at least one task fully separated from it
+    // (i.e. there exists *some* clearance), assert no full overlap with a
+    // task other than the edge's source/target. Coarse check: each edge
+    // label should overlap AT MOST 2 nodes (its source and target).
+    for (const m of labels) {
+      const lx1 = +m[1], ly1 = +m[2], lx2 = lx1 + +m[3], ly2 = ly1 + +m[4];
+      const hits = [...tasks, ...gws].filter(o =>
+        lx1 < o.x + o.w && lx2 > o.x && ly1 < o.y + o.h && ly2 > o.y
+      );
+      expect(hits.length, `label ${JSON.stringify(m[5])} touches ${hits.length} nodes`).toBeLessThanOrEqual(2);
+    }
+  });
+
   // Iron rule: a boundary event's outgoing connector must exit perpendicular
   // to its attached host edge — never horizontally. The glyph straddles the
   // host edge, so a horizontal exit would run through the host activity.

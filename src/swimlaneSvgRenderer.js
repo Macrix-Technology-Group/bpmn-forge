@@ -4,6 +4,8 @@ import { renderElkSvg } from './elkSvgRenderer.js';
 import { esc, drawNodeAt, drawEdge, drawMessageFlow, drawDataObject, drawDataAssociation, drawGroupBox, svgDocument, DATA_OBJECT_WIDTH, DATA_OBJECT_HEIGHT, GROUP_PADDING } from './svgPrimitives.js';
 import { enforceDistinctEndpoints, findOverlappingEndpoints } from './distinctEndpoints.js';
 import { detectLoopEdges } from './loopDetection.js';
+import { placeEdgeLabel } from './labelEngine.js';
+import { insetEventEndpoints } from './eventEndpointInset.js';
 import { classifyGatewayBranches } from './gatewayPorts.js';
 import { boundaryAttachPoint, indexBoundariesByEdge } from './boundaryPlacement.js';
 import { nodeBox } from './nodeGeometry.js';
@@ -384,9 +386,34 @@ function routeEdges(edges, positioned, laneHeights) {
     let bend = [];
 
     if (port === 'bottom' || port === 'top') {
-      // Straight vertical from source until aligned with target row, then horizontal.
       if (Math.abs(sx - tx) < 4) {
         // Already aligned in X — straight vertical
+      } else if (port === 'bottom' && ty < (s.absY + s.height + 4)) {
+        // Target sits at or above the gateway's row, but we're exiting
+        // bottom (right was taken by the default branch). A simple L-route
+        // would drop down then back up THROUGH the gateway body. Bypass
+        // BELOW the gateway and approach the target's BOTTOM face going
+        // UP — a perpendicular meeting with a meaningful (~30-px) approach
+        // distance, never a parallel graze of the left edge.
+        const clearY = s.absY + s.height + 30;
+        const targetCx = t.absX + t.width / 2;
+        bend = [
+          { x: sx, y: clearY },
+          { x: targetCx, y: clearY }
+        ];
+        tx = targetCx;
+        ty = t.absY + t.height; // target bottom-center
+      } else if (port === 'top' && ty > (s.absY - 4)) {
+        // Symmetric: bypass above the gateway, approach target's TOP face
+        // going DOWN.
+        const clearY = s.absY - 30;
+        const targetCx = t.absX + t.width / 2;
+        bend = [
+          { x: sx, y: clearY },
+          { x: targetCx, y: clearY }
+        ];
+        tx = targetCx;
+        ty = t.absY; // target top-center
       } else {
         bend = [{ x: sx, y: ty }];
       }
@@ -396,7 +423,13 @@ function routeEdges(edges, positioned, laneHeights) {
       const sameY = Math.abs(sy - ty) < 4;
       if (sameLane && sameY) {
         if (sameRowBlocker(s, t)) {
-          const trunkY = laneTopY(s.laneIdx, laneHeights) + 14;
+          // Trunk sits inside the lane band with enough clearance from the
+          // lane top that the edge label (which floats 12px above a horizontal
+          // segment, with a background rect spanning ±14 around its centre →
+          // rect top is segment.y - 26) doesn't straddle the lane separator
+          // line. Inset 32 gives the label rect 6px of headroom below the
+          // separator.
+          const trunkY = laneTopY(s.laneIdx, laneHeights) + 32;
           const sBend = sx + 22 + fanIdx * 30;
           const tBend = tx - 22;
           bend = [
@@ -774,6 +807,41 @@ export async function renderSwimlaneSvg(ir) {
       `Render invariant violated: ${overlaps.length} connector endpoint(s) overlap. ` +
       `Sample: ${JSON.stringify(overlaps[0])}`
     );
+  }
+
+  // Event glyphs render with a 5px inset inside their bbox. Move endpoints
+  // touching event nodes inward by 5 px so the arrow tip lands on the
+  // visible circle, not on the (invisible) bbox edge 5 px outside it.
+  insetEventEndpoints(
+    [...routedEdges, ...routedLoopEdges, ...routedMessageFlows],
+    positionedForMf
+  );
+
+  // Edge labels must clear EVERY node glyph AND every already-placed edge
+  // label. We pre-place labels iteratively, longest-first (the long ones
+  // have the least flexibility, so they go first), accumulating each placed
+  // label's rect into the obstacle list for subsequent labels. drawEdge
+  // reads `edge._label` if set and skips its own placement step.
+  const labelObstacles = [...positioned.values()].map(n => ({
+    x: n.absX, y: n.absY, w: n.width, h: n.height
+  }));
+  const labellableEdges = [...routedEdges, ...routedLoopEdges].filter(e => e.data?.condition);
+  labellableEdges.sort((a, b) => (b.data.condition.length - a.data.condition.length));
+  const placedLabelRects = [];
+  for (const e of labellableEdges) {
+    e._obstacles = [...labelObstacles, ...placedLabelRects];
+    const sec = e.sections?.[0];
+    if (!sec) continue;
+    const pts = [sec.startPoint, ...(sec.bendPoints || []), sec.endPoint];
+    const label = placeEdgeLabel({ ...e.data, _obstacles: e._obstacles }, pts);
+    if (!label) continue;
+    e._label = label;
+    placedLabelRects.push({
+      x: label.x - label.backgroundWidth / 2,
+      y: label.y - 14,
+      w: label.backgroundWidth,
+      h: label.backgroundHeight
+    });
   }
 
   const edgeSvg = [...routedEdges, ...routedLoopEdges].map(drawEdge).join('\n');

@@ -146,7 +146,13 @@ These are optional; emit them only when the description supports them:
    - **`business_rule`** — only when the description names a decision/policy table
    - **`manual`** — uninstrumented physical work
    - **`task`** — fallback only when none of the above fit
-2. **Status transitions are their own service tasks.** "Mission goes from Draft to Active" → emit a `service` task named `Set Status: Active`. Always make the status change explicit; do not bury it inside another task.
+2. **Status transitions are their own service tasks — but only when the description names a state machine.** Emit a separate `Set Status: X` service task **only** when the description explicitly:
+   - Names two or more states for the same entity (e.g. "the mission moves from Draft to Active", "the order goes Pending → Approved → Shipped"), OR
+   - Uses transition language with both a prior and a new state ("transitions to", "moves from … to …", "is marked as", "goes from X to Y").
+
+   Do **not** synthesize a `Set Status:` task out of an outcome word like "clears it green", "approves it", "rejects it", "validates it", "confirms it" when the description does not also name a prior state or a state machine. Those phrases are *the action itself* — the gateway condition or the task that produced the outcome already conveys the meaning. Inventing a `Set Status: Approved` task after every approval gateway clutters the diagram with steps that don't exist in the real process.
+
+   When in doubt: if the description doesn't use the literal word "status", "state", or a transition phrase ("from X to Y", "moves to", "becomes"), do **not** emit a status-transition task.
 3. **Document creation/commits are user tasks** owned by whichever actor the description names (e.g. `Create SPEC Document` owned by BO).
 4. **Gateways**:
    - **`exclusive`** — one of N branches based on a condition ("if/else", "valid/invalid", "approved/rejected")
@@ -185,7 +191,9 @@ Heuristic: if the description involves **message flows** between the actors (one
   - **Tasks** — lane of the actor performing the task. A `send` task initiated by actor A targeting actor B goes in **A's** lane (the sender's).
   - **Service tasks for status transitions** — system lane if one exists, otherwise the lane of the actor whose action triggered the transition.
   - **Gateways** — lane of the actor whose decision triggers the split (or system lane for system-evaluated conditions).
-  - **End events** — lane of the actor whose action led to the terminal state.
+  - **End events** — lane of the **immediately preceding node** (the source of the end event's sole incoming sequence flow). Do *not* assign an end event to the lane of the actor "whose process is ending" or "who owns the outcome" — that reasoning produces zigzag paths where a cancel/abort step in one lane has its terminal event jump back into another lane. The terminal event always belongs in the lane where the last action happened.
+
+  **Avoid lane zigzags on terminal paths.** If a cancellation / decline / failure path runs `gateway in lane A → handler task in lane B → end event`, the end event goes in **lane B** (the handler's lane). A terminal subflow that traverses three lanes for one logical outcome reads as accidental complexity.
 
 If you cannot decide, do not emit `participants` — render flat instead.
 

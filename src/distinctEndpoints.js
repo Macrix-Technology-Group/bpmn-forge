@@ -146,9 +146,33 @@ export function enforceDistinctEndpoints(routedEdges, positioned) {
       buckets.get(key).push({ routed: r, role: 'target', node: tNode, face });
     }
   }
+  // Minimum visual gap between two endpoints on the same face, in pixels.
+  // If existing endpoints are already at least this far apart, redistribution
+  // is skipped — the iron rule (no two endpoints at the same coordinate) is
+  // already satisfied, and forcing them onto the face's evenly-spaced grid
+  // would visually break alignments the routing layer carefully set up
+  // (e.g. a message flow into a black-box pool aligned to its source's x).
+  const MIN_ENDPOINT_GAP = 16;
+
   for (const [, bucket] of buckets) {
     if (bucket.length < 2) continue;
     const { face, node } = bucket[0];
+    const isVertical = face === 'left' || face === 'right';
+    const perp = entry => {
+      const sec = entry.routed.sections[0];
+      const pt = entry.role === 'source' ? sec.startPoint : sec.endPoint;
+      return isVertical ? pt.y : pt.x;
+    };
+    const sorted = [...bucket].sort((a, b) => perp(a) - perp(b));
+    let minGap = Infinity;
+    for (let i = 1; i < sorted.length; i++) {
+      minGap = Math.min(minGap, perp(sorted[i]) - perp(sorted[i - 1]));
+    }
+    if (minGap >= MIN_ENDPOINT_GAP) continue;
+
+    // Some pair is below the gap threshold — redistribute the whole bucket
+    // evenly along the face. Sort by the OTHER endpoint's perpendicular
+    // position so the spread is monotonic and crossings are minimized.
     sortBucket(bucket, face);
     bucket.forEach((entry, i) => {
       const newPerp = attachCoord(node, face, i, bucket.length);
