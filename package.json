@@ -1,6 +1,6 @@
 {
   "name": "@macrix-technology-group/bpmn-forge",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "type": "module",
   "description": "BPMN 2.0 reference engine — parser, reference model, token/event/execution semantics, BPMNDI roundtrip, SVG rendering",
   "main": "./src/index.js",
