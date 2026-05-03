@@ -34,25 +34,36 @@ function nodeAtPoint(nodeList, pt) {
   return null;
 }
 
-// Returns the perpendicular coord (y for vertical faces, x for horizontal) of
-// the i-th of N attach points on a node's face. Margin keeps endpoints away
-// from the corners so arrowheads don't overlap the node border.
+// Returns the perpendicular coord (y for vertical faces, x for horizontal)
+// of the i-th of N attach points on a node's face. Asymmetric: i=0 anchors
+// at the face's center; subsequent endpoints alternate -STEP, +STEP, -2*STEP,
+// +2*STEP… around it. Combined with sortBucket's target-role priority, this
+// keeps incoming arrows (target endpoints) at the natural center of the
+// face while pushing outgoing connectors slightly to the side.
 function attachCoord(node, face, i, N) {
   const b = nodeBox(node);
   const isVerticalFace = face === 'left' || face === 'right';
-  const usable = (isVerticalFace ? b.height : b.width) - 2 * FACE_MARGIN;
-  const start = (isVerticalFace ? b.y : b.x) + FACE_MARGIN;
-  if (N === 1) return start + usable / 2;
-  // Distribute as i/(N-1) so first/last sit at the band's extremes — keeps
-  // the spread visually balanced without crowding.
-  return start + (usable * i) / (N - 1);
+  const center = isVerticalFace ? b.y + b.height / 2 : b.x + b.width / 2;
+  if (i === 0 || N === 1) return center;
+  const STEP = 24;
+  const maxOffset = (isVerticalFace ? b.height : b.width) / 2 - FACE_MARGIN;
+  const k = Math.ceil(i / 2);
+  const sign = i % 2 === 1 ? -1 : 1;
+  const offset = Math.min(k * STEP, maxOffset);
+  return center + sign * offset;
 }
 
-// Sort the bucket so the redistribution is monotonic w.r.t. the OTHER
-// endpoint's perpendicular position. Edges originating higher on the canvas
-// attach higher on a vertical face, etc. — minimizes path crossings.
+// Sort the bucket. Two priorities, in order:
+//   1. TARGET role before SOURCE role. The arrowhead endpoint (target) is
+//      visually more important than the start point — when both compete
+//      for a face's center, the arrow wins. Combined with attachCoord's
+//      asymmetric distribution (i=0 → center), this keeps incoming
+//      connectors at face-center.
+//   2. Within the same role, sort by the OTHER endpoint's perpendicular
+//      position so the spread is monotonic and crossings are minimized.
 function sortBucket(bucket, face) {
   bucket.sort((a, b) => {
+    if (a.role !== b.role) return a.role === 'target' ? -1 : 1;
     const aSec = a.routed.sections[0];
     const bSec = b.routed.sections[0];
     const aOther = a.role === 'source' ? aSec.endPoint : aSec.startPoint;

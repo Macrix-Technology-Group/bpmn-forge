@@ -11,17 +11,17 @@ This guide covers two install paths:
 
 ```bash
 # from npm (recommended)
-npm install @macrix-technology-group/bpmn-forge@0.3.3
+npm install @macrix-technology-group/bpmn-forge@0.3.4
 
 # from GitHub (pin to a release tag)
-npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.3"
+npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.4"
 ```
 
 ```ts
 import { importBpmnXml, renderUnifiedSvg } from '@macrix-technology-group/bpmn-forge';
 ```
 
-When pinning from GitHub, pin to a tag (`#0.3.3`) — never to `main` — so a future commit on `main` doesn't silently change your dependency.
+When pinning from GitHub, pin to a tag (`#0.3.4`) — never to `main` — so a future commit on `main` doesn't silently change your dependency.
 
 ---
 
@@ -63,10 +63,10 @@ Pick one of these patterns. The first is recommended.
 ### A. Pin to a release tag (recommended)
 
 ```bash
-npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.3"
+npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.4"
 ```
 
-`#0.3.3` is the git ref to check out. Released tags are listed at <https://github.com/Macrix-Technology-Group/bpmn-forge/tags>.
+`#0.3.4` is the git ref to check out. Released tags are listed at <https://github.com/Macrix-Technology-Group/bpmn-forge/tags>.
 
 This is **reproducible**: re-running `npm install` always pulls the same code.
 
@@ -186,6 +186,14 @@ These named exports are stable and safe to import from the package root:
 
 ## 5. Updating to a new version
 
+### Migrating to 0.3.4 (trunk staggering, perpendicular bypass, target-priority distinct endpoints)
+
+If you're upgrading from 0.3.3:
+
+- **Collinear overlapping trunks are now staggered.** Two routed edges that previously shared a horizontal segment at the same y (or a vertical at the same x) are now rendered on separate tracks. Caused by message flows converging at one target, multi-branch gateway bypasses sharing a clearance band, etc. — flows that used to merge into a single line now appear as distinct lines.
+- **Gateway-bypass routing approaches the target's bottom (or top) face perpendicular**, not the left face with a 14-px stub. A non-default branch with a same-row target now drops below (or rises above) the gateway, traverses, and meets the target with a meaningful ~30-px perpendicular approach.
+- **`enforceDistinctEndpoints` keeps target endpoints at face center.** When multiple connectors compete for the same face on a node, target-role endpoints (the arrowhead) win the center anchor; source-role endpoints (line starts) get small symmetric offsets around it. Was: even-spread distribution that pushed everything to the corners.
+
 ### Migrating to 0.3.3 (label, gateway, and approach-angle hardening)
 
 If you're upgrading from 0.3.2:
@@ -235,7 +243,7 @@ Bump the tag in your `package.json` `dependencies`, then reinstall:
 {
   "dependencies": {
     "@macrix-technology-group/bpmn-forge":
-      "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.3"
+      "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.4"
   }
 }
 ```
@@ -252,10 +260,10 @@ Commit the resulting `package-lock.json` change so collaborators pick up the sam
 
 ```bash
 # yarn
-yarn add "@macrix-technology-group/bpmn-forge@git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.3"
+yarn add "@macrix-technology-group/bpmn-forge@git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.4"
 
 # pnpm
-pnpm add "github:Macrix-Technology-Group/bpmn-forge#0.3.3"
+pnpm add "github:Macrix-Technology-Group/bpmn-forge#0.3.4"
 ```
 
 ---
@@ -269,7 +277,7 @@ If it becomes private, you have two options:
 ### Option A — SSH
 
 ```bash
-npm install "git+ssh://git@github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.3"
+npm install "git+ssh://git@github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.4"
 ```
 
 Requires your SSH key to be authorized on the org and `ssh-agent` running. CI runners need a deploy key.
@@ -279,7 +287,7 @@ Requires your SSH key to be authorized on the org and `ssh-agent` running. CI ru
 ```bash
 # locally
 git config --global url."https://YOUR_PAT@github.com/".insteadOf "https://github.com/"
-npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.3"
+npm install "git+https://github.com/Macrix-Technology-Group/bpmn-forge.git#0.3.4"
 ```
 
 For CI, set `GITHUB_TOKEN` (or a fine-grained PAT with `Contents: read` on the repo) and use the same `insteadOf` trick in the workflow.
@@ -292,7 +300,7 @@ For CI, set `GITHUB_TOKEN` (or a fine-grained PAT with `Contents: read` on the r
 |---|---|
 | `Error [ERR_REQUIRE_ESM]: require() of ES Module …` | Your consumer is CommonJS. Either set `"type": "module"` in `package.json`, rename the importing file to `.mjs`, or use a dynamic `await import(...)`. |
 | `Cannot find package '@macrix-technology-group/bpmn-forge'` | The install probably failed silently. Re-run `npm install` and watch for git/network errors. |
-| `npm ERR! 404` on git URL | Check the spelling of the org/repo name and the tag (`#0.3.3`). Tags are at <https://github.com/Macrix-Technology-Group/bpmn-forge/tags>. |
+| `npm ERR! 404` on git URL | Check the spelling of the org/repo name and the tag (`#0.3.4`). Tags are at <https://github.com/Macrix-Technology-Group/bpmn-forge/tags>. |
 | `Permission denied (publickey)` | Repo flipped private and your SSH key isn't authorized. See [Private-repo auth](#private-repo-auth). |
 | `elkjs` errors at runtime in the browser | `bpmn-forge` is intended to run in **Node** (server-side / API routes / Node CLIs). Do not import it from a Vite/Next.js client component — call it from a route handler / server action and ship the resulting SVG to the client. |
 

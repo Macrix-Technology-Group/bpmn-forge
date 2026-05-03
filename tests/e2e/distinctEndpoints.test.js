@@ -174,8 +174,12 @@ describe('distinctEndpoints invariant', () => {
         if (n.event) {
           const d = Math.hypot(pt.x - n.cx, pt.y - n.cy);
           if (Math.abs(d - 23) <= TOL) {
+            // Point on the circle: dominant axis tells us which face.
+            // |dx|>|dy| → point is on the left/right of the center = a
+            // VERTICAL face (face line runs up-down). Perpendicular
+            // approach is therefore horizontal.
             const dx = pt.x - n.cx, dy = pt.y - n.cy;
-            return Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
+            return Math.abs(dx) > Math.abs(dy) ? 'vertical' : 'horizontal';
           }
           continue;
         }
@@ -206,6 +210,59 @@ describe('distinctEndpoints invariant', () => {
         `path ${m[1]} ends with ${segDir} segment on ${faceOrientation} face — parallel hit`
       ).toBe(required);
     }
+  });
+
+  // Iron rule: when two routed edges share a horizontal trunk at the same y
+  // (or a vertical at the same x) with overlapping range, they must be
+  // staggered onto separate tracks. Otherwise multiple flows merge visually
+  // into a single line and the diagram is unreadable.
+  it('staggerOverlappingTrunks puts collinear overlapping middle segments onto separate tracks', async () => {
+    const { staggerOverlappingTrunks } = await import('../../src/staggerTrunks.js');
+    // Two edges with middle horizontal segments at the same y, overlapping in x.
+    const e1 = {
+      sections: [{
+        startPoint: { x: 0, y: 0 },
+        bendPoints: [{ x: 50, y: 100 }, { x: 200, y: 100 }],
+        endPoint: { x: 200, y: 200 }
+      }]
+    };
+    const e2 = {
+      sections: [{
+        startPoint: { x: 30, y: 0 },
+        bendPoints: [{ x: 80, y: 100 }, { x: 250, y: 100 }],
+        endPoint: { x: 250, y: 200 }
+      }]
+    };
+    staggerOverlappingTrunks([e1, e2]);
+    const e1mid = e1.sections[0].bendPoints;
+    const e2mid = e2.sections[0].bendPoints;
+    // Both middle segments still horizontal (y1 === y2 within each segment)
+    expect(e1mid[0].y).toBe(e1mid[1].y);
+    expect(e2mid[0].y).toBe(e2mid[1].y);
+    // But the two trunks are now at DIFFERENT y values
+    expect(e1mid[0].y).not.toBe(e2mid[0].y);
+  });
+
+  it('staggerOverlappingTrunks leaves non-overlapping segments untouched', async () => {
+    const { staggerOverlappingTrunks } = await import('../../src/staggerTrunks.js');
+    // Two horizontal middle segments at same y but DISJOINT x ranges.
+    const e1 = {
+      sections: [{
+        startPoint: { x: 0, y: 0 },
+        bendPoints: [{ x: 50, y: 100 }, { x: 100, y: 100 }],
+        endPoint: { x: 100, y: 200 }
+      }]
+    };
+    const e2 = {
+      sections: [{
+        startPoint: { x: 200, y: 0 },
+        bendPoints: [{ x: 250, y: 100 }, { x: 300, y: 100 }],
+        endPoint: { x: 300, y: 200 }
+      }]
+    };
+    staggerOverlappingTrunks([e1, e2]);
+    expect(e1.sections[0].bendPoints[0].y).toBe(100);
+    expect(e2.sections[0].bendPoints[0].y).toBe(100);
   });
 
   // distinct-endpoints must not re-redistribute endpoints that are already

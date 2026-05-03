@@ -6,6 +6,7 @@ import { enforceDistinctEndpoints, findOverlappingEndpoints } from './distinctEn
 import { detectLoopEdges } from './loopDetection.js';
 import { placeEdgeLabel } from './labelEngine.js';
 import { insetEventEndpoints } from './eventEndpointInset.js';
+import { staggerOverlappingTrunks } from './staggerTrunks.js';
 import { classifyGatewayBranches } from './gatewayPorts.js';
 import { boundaryAttachPoint, indexBoundariesByEdge } from './boundaryPlacement.js';
 import { nodeBox } from './nodeGeometry.js';
@@ -815,6 +816,15 @@ export async function renderSwimlaneSvg(ir) {
   insetEventEndpoints(
     [...routedEdges, ...routedLoopEdges, ...routedMessageFlows],
     positionedForMf
+  );
+
+  // Iron rule: collinear overlapping trunks must be drawn as separate lines.
+  // Two horizontal segments at the same y with overlapping x ranges (or two
+  // vertical segments at the same x with overlapping y ranges) get
+  // staggered perpendicular to the segment so each one renders on its own
+  // track. Loop edges already self-stagger by index, so they're skipped.
+  staggerOverlappingTrunks(
+    [...routedEdges, ...routedLoopEdges, ...routedMessageFlows]
   );
 
   // Edge labels must clear EVERY node glyph AND every already-placed edge

@@ -6,6 +6,7 @@ import { detectLoopEdges } from './loopDetection.js';
 import { classifyGatewayBranches } from './gatewayPorts.js';
 import { placeEdgeLabel } from './labelEngine.js';
 import { insetEventEndpoints } from './eventEndpointInset.js';
+import { staggerOverlappingTrunks } from './staggerTrunks.js';
 import { boundaryAttachPoint, indexBoundariesByEdge } from './boundaryPlacement.js';
 import { nodeBox } from './nodeGeometry.js';
 
@@ -369,6 +370,10 @@ export async function renderElkSvg(ir, options = {}) {
   // Event glyphs are inset 5 px inside their bbox; move endpoints touching
   // events inward so the arrow tip lands on the visible circle perimeter.
   insetEventEndpoints(allShiftedEdges, shiftedNodes);
+
+  // Stagger collinear overlapping trunks so two flows sharing a horizontal
+  // (or vertical) segment render as two visibly separate lines, never one.
+  staggerOverlappingTrunks(allShiftedEdges);
 
   const maxX = Math.max(...shiftedNodes.map(n => n.x + n.width)) + padX;
   const loopBandBottom = routedLoopEdges.length > 0
